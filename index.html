@@ -1,0 +1,3188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#080d12">
+<meta name="description" content="以沪深300为市场组合、中国国债收益率为无风险利率，使用资本市场线（CML）与资本配置线（CAL）计算资产配置权重，并给出前十大成分股的参考投入金额。">
+<title>资产配置 · 沪深300 CML / CAL 工具</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23080d12'/%3E%3Cpath d='M12 46L28 33l8 6 16-21' fill='none' stroke='%233987e5' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/%3E%3Ccircle cx='52' cy='18' r='4' fill='%23d95926'/%3E%3C/svg%3E">
+<style>
+:root {
+  color-scheme: dark;
+  --page: #080d12;
+  --surface: #111820;
+  --surface-2: #0d141b;
+  --surface-3: #1a2530;
+  --surface-4: #21303d;
+  --ink: #f1f3f0;
+  --ink-2: #b8c2ca;
+  --ink-3: #8c99a5;
+  --hairline: rgba(255, 255, 255, 0.085);
+  --hairline-strong: rgba(255, 255, 255, 0.15);
+  --grid: #22303b;
+  --axis: #344451;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-1-soft: rgba(57, 135, 229, 0.12);
+  --series-2-soft: rgba(217, 89, 38, 0.12);
+  --good: #0ca30c;
+  --warning: #fab219;
+  --critical: #d03b3b;
+  --up: #ff7a7a;
+  --down: #28c08c;
+  --radius-xl: 24px;
+  --radius-lg: 18px;
+  --radius-md: 12px;
+  --font-sans: "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, -apple-system, sans-serif;
+  --maxw: 1320px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(1100px 680px at 85% -8%, rgba(217, 89, 38, 0.10), transparent 62%),
+    radial-gradient(900px 620px at 5% 4%, rgba(57, 135, 229, 0.08), transparent 60%),
+    var(--page);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+::selection { background: rgba(57, 135, 229, 0.35); color: #fff; }
+a { color: inherit; text-decoration: none; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: wait; opacity: 0.65; }
+svg { display: block; }
+h1, h2, h3, p { margin: 0; }
+table { border-collapse: collapse; width: 100%; }
+:focus-visible { outline: 2px solid var(--series-1); outline-offset: 3px; }
+.skip-link {
+  position: fixed; z-index: 100; top: 10px; left: 10px; padding: 10px 14px;
+  background: var(--ink); color: var(--page); border-radius: 8px; transform: translateY(-160%);
+}
+.skip-link:focus { transform: translateY(0); }
+.page-grid {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; opacity: 0.42;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 88px 88px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 80%);
+          mask-image: radial-gradient(ellipse 80% 60% at 50% 0%, #000 20%, transparent 80%);
+}
+.shell { width: 100%; max-width: var(--maxw); margin: 0 auto; padding: 0 32px; position: relative; z-index: 1; }
+
+/* ---------- Header ---------- */
+.site-header {
+  position: sticky; top: 0; z-index: 50;
+  background: rgba(8, 13, 18, 0.82);
+  border-bottom: 1px solid var(--hairline);
+  -webkit-backdrop-filter: blur(18px) saturate(130%);
+          backdrop-filter: blur(18px) saturate(130%);
+}
+.header-inner { height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+.brand { display: inline-flex; align-items: center; gap: 11px; flex: 0 0 auto; }
+.brand-mark {
+  width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+  background: linear-gradient(145deg, #18232d, #0c1218);
+  border: 1px solid var(--hairline-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.brand-mark svg { width: 22px; height: 22px; }
+.brand-copy { display: flex; flex-direction: column; gap: 1px; }
+.brand-copy strong { font-size: 14px; font-weight: 650; letter-spacing: 0.02em; }
+.brand-copy span { font-size: 8.5px; letter-spacing: 0.16em; color: var(--ink-3); font-weight: 600; }
+.main-nav { display: flex; align-items: center; gap: 26px; margin-left: auto; }
+.main-nav a { font-size: 12px; color: var(--ink-3); transition: color 0.18s ease; }
+.main-nav a:hover { color: var(--ink); }
+.header-tools { display: flex; align-items: center; gap: 10px; flex: 0 0 auto; }
+.data-status {
+  display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 11px;
+  border: 1px solid var(--hairline); border-radius: 999px; background: rgba(255, 255, 255, 0.022);
+  color: var(--ink-2); font-size: 11.5px; white-space: nowrap;
+}
+.status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--warning); position: relative; flex: 0 0 auto; }
+.status-dot.live { background: var(--good); box-shadow: 0 0 0 4px rgba(12, 163, 12, 0.12); }
+.status-dot.live::after {
+  content: ""; position: absolute; inset: -4px; border-radius: 50%;
+  border: 1px solid rgba(12, 163, 12, 0.45); animation: live-pulse 2.6s ease-out infinite;
+}
+.status-dot.loading { background: var(--series-1); box-shadow: 0 0 0 4px rgba(57, 135, 229, 0.12); }
+@keyframes live-pulse { 0% { transform: scale(0.8); opacity: 0.8; } 75%, 100% { transform: scale(1.8); opacity: 0; } }
+.icon-btn {
+  width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+  background: transparent; border: 1px solid var(--hairline); color: var(--ink-2);
+  transition: background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+.icon-btn:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--hairline-strong); color: var(--ink); }
+.icon-btn svg { width: 15px; height: 15px; }
+.icon-btn.spinning svg { animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.header-clock {
+  font-size: 11px; color: var(--ink-3); white-space: nowrap; padding-left: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Hero ---------- */
+.hero {
+  display: grid; grid-template-columns: minmax(0, 1.22fr) minmax(350px, 0.78fr);
+  gap: 64px; align-items: center; padding: 72px 0 48px;
+}
+.hero-copy { padding: 6px 0; }
+.eyebrow {
+  display: flex; align-items: center; gap: 11px; color: var(--ink-3);
+  font-size: 10px; font-weight: 650; letter-spacing: 0.15em; text-transform: uppercase;
+}
+.eyebrow .rule { width: 34px; height: 1px; background: var(--series-2); flex: 0 0 auto; }
+.hero h1 {
+  margin-top: 22px; max-width: 760px;
+  font-size: clamp(56px, 7vw, 96px); line-height: 1.04; letter-spacing: -0.05em;
+  font-weight: 640;
+}
+.hero h1 .dot { color: var(--series-2); }
+.hero-sub {
+  max-width: 570px; margin-top: 24px; color: var(--ink-2);
+  font-size: clamp(14px, 1.25vw, 16px); line-height: 1.85; letter-spacing: 0.005em;
+}
+.hero-actions { display: flex; align-items: center; gap: 14px; margin-top: 32px; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+  min-height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid transparent;
+  font-size: 12.5px; font-weight: 650; letter-spacing: 0.01em; white-space: nowrap;
+  transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, color 0.18s ease;
+}
+.btn svg { width: 15px; height: 15px; }
+.btn-primary { background: var(--ink); color: #080d12; }
+.btn-primary:hover { background: #ffffff; transform: translateY(-1px); }
+.btn-ghost { border-color: var(--hairline); background: rgba(255, 255, 255, 0.02); color: var(--ink-2); }
+.btn-ghost:hover { border-color: var(--hairline-strong); color: var(--ink); background: rgba(255, 255, 255, 0.04); }
+.btn-full { width: 100%; }
+.hero-footnote { margin-top: 18px; color: var(--ink-3); font-size: 10.5px; letter-spacing: 0.04em; }
+
+/* ---------- Rate panel ---------- */
+.rate-panel {
+  position: relative; overflow: hidden; padding: 26px 26px 22px;
+  border: 1px solid var(--hairline); border-radius: var(--radius-xl);
+  background: linear-gradient(160deg, rgba(24, 35, 46, 0.96), rgba(13, 20, 27, 0.98));
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.045);
+}
+.rate-panel::before {
+  content: ""; position: absolute; width: 280px; height: 280px; right: -110px; top: -150px;
+  border-radius: 50%; background: radial-gradient(circle, rgba(217, 89, 38, 0.18), transparent 68%);
+  pointer-events: none;
+}
+.rate-panel > * { position: relative; z-index: 1; }
+.panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.panel-label {
+  display: block; color: var(--ink-3); font-size: 9px; font-weight: 650;
+  letter-spacing: 0.15em; text-transform: uppercase;
+}
+.panel-head h2 { margin-top: 7px; font-size: 15px; font-weight: 620; letter-spacing: -0.01em; }
+.live-pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px;
+  border: 1px solid var(--hairline); border-radius: 999px; font-size: 9.5px;
+  color: var(--ink-2); letter-spacing: 0.03em; white-space: nowrap; background: rgba(255, 255, 255, 0.025);
+}
+.live-pill .status-dot { width: 5px; height: 5px; }
+.rate-main { display: flex; align-items: baseline; gap: 13px; margin-top: 24px; flex-wrap: wrap; }
+.rate-value { font-size: 46px; line-height: 1; letter-spacing: -0.045em; font-weight: 630; }
+.rate-unit { font-size: 19px; color: var(--ink-2); margin-left: 2px; letter-spacing: -0.02em; }
+.rate-delta {
+  display: inline-flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 999px;
+  color: var(--ink-2); background: rgba(255, 255, 255, 0.045); border: 1px solid var(--hairline);
+  font-size: 10px; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.rate-caption { display: flex; justify-content: space-between; gap: 14px; margin-top: 9px; color: var(--ink-3); font-size: 10.5px; flex-wrap: wrap; }
+.rf-spark-wrap { margin: 13px 0 16px; height: 58px; }
+.rf-spark-wrap svg { width: 100%; height: 58px; overflow: visible; }
+.tenor-switch { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.tenor-btn {
+  min-width: 0; padding: 8px 6px 7px; text-align: left; border-radius: 9px;
+  border: 1px solid var(--hairline); background: rgba(255, 255, 255, 0.022);
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.tenor-btn:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--hairline-strong); }
+.tenor-btn[aria-pressed="true"] { border-color: rgba(57, 135, 229, 0.55); background: rgba(57, 135, 229, 0.10); }
+.tenor-btn span { display: block; color: var(--ink-3); font-size: 9px; letter-spacing: 0.08em; }
+.tenor-btn strong { display: block; margin-top: 3px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.rate-note { margin-top: 15px; padding-top: 13px; border-top: 1px solid var(--hairline); color: var(--ink-3); font-size: 10px; line-height: 1.65; }
+
+/* ---------- Market strip ---------- */
+.market-strip { border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); margin-top: 8px; }
+.strip-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  min-height: 48px; color: var(--ink-3); font-size: 10.5px; flex-wrap: wrap;
+}
+.strip-head .left { display: inline-flex; align-items: center; gap: 9px; color: var(--ink-2); }
+.strip-head .left strong { font-size: 11px; font-weight: 600; letter-spacing: 0.03em; color: var(--ink); }
+.strip-head .dot-sep { width: 3px; height: 3px; border-radius: 50%; background: var(--ink-3); opacity: 0.6; }
+.strip-grid { display: grid; grid-template-columns: 1.3fr 1fr 1fr 0.9fr; border-top: 1px solid var(--hairline); }
+.stat-tile { min-width: 0; padding: 19px 26px 20px; border-left: 1px solid var(--hairline); }
+.stat-tile:first-child { border-left: 0; padding-left: 0; }
+.tile-label { display: flex; align-items: center; gap: 8px; color: var(--ink-3); font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; }
+.tile-label .mini-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--series-1); }
+.tile-price {
+  display: flex; align-items: baseline; gap: 10px; margin-top: 8px; flex-wrap: wrap;
+  font-size: 31px; line-height: 1.15; letter-spacing: -0.035em; font-weight: 620;
+}
+.tile-price .delta { font-size: 11.5px; letter-spacing: 0; font-weight: 600; padding: 3px 7px; border-radius: 999px; }
+.tile-value { margin-top: 9px; font-size: 25px; line-height: 1.2; letter-spacing: -0.03em; font-weight: 620; white-space: nowrap; }
+.tile-sub { margin-top: 5px; color: var(--ink-3); font-size: 10px; line-height: 1.6; }
+.tile-sub strong { color: var(--ink-2); font-weight: 550; }
+.is-up { color: var(--up); }
+.is-down { color: var(--down); }
+.delta.is-up { background: rgba(255, 122, 122, 0.09); }
+.delta.is-down { background: rgba(40, 192, 140, 0.09); }
+.tile-foot { margin-top: 10px; color: var(--ink-3); font-size: 9.5px; line-height: 1.55; }
+.tile-foot .trend-line { display: inline-flex; align-items: center; gap: 5px; }
+.source-chip {
+  display: inline-flex; align-items: center; gap: 5px; padding: 2px 6px; border-radius: 4px;
+  border: 1px solid var(--hairline); color: var(--ink-3); font-size: 8.5px; letter-spacing: 0.04em;
+  white-space: nowrap; text-transform: none; font-weight: 500;
+}
+.source-chip .status-dot { width: 4px; height: 4px; }
+
+/* ---------- Sections ---------- */
+.section { padding-top: 86px; scroll-margin-top: 86px; }
+.section-head {
+  display: flex; justify-content: space-between; align-items: flex-end; gap: 32px;
+  padding-top: 26px; margin-bottom: 28px; border-top: 1px solid var(--hairline);
+}
+.section-kicker { color: var(--ink-3); font-size: 9.5px; font-weight: 650; letter-spacing: 0.15em; text-transform: uppercase; }
+.section-title { margin-top: 11px; font-size: clamp(29px, 3.4vw, 44px); line-height: 1.14; letter-spacing: -0.04em; font-weight: 630; }
+.section-desc { max-width: 410px; color: var(--ink-2); font-size: 12.5px; line-height: 1.8; }
+.panel {
+  background: linear-gradient(180deg, rgba(17, 24, 32, 0.96), rgba(13, 20, 27, 0.97));
+  border: 1px solid var(--hairline); border-radius: var(--radius-xl);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+.panel h3 { font-size: 17px; font-weight: 610; letter-spacing: -0.02em; }
+.muted { color: var(--ink-3); }
+
+/* ---------- Allocator ---------- */
+.alloc-grid { display: grid; grid-template-columns: minmax(330px, 0.76fr) minmax(0, 1.24fr); gap: 22px; align-items: start; }
+.input-panel { padding: 26px; }
+.input-panel .panel-head { align-items: center; margin-bottom: 24px; }
+.badge {
+  display: inline-flex; align-items: center; min-height: 22px; padding: 0 7px;
+  border: 1px solid var(--hairline); border-radius: 5px; color: var(--ink-3);
+  font-size: 8.5px; letter-spacing: 0.08em; font-weight: 600;
+}
+.form-group { padding: 17px 0; border-top: 1px solid var(--hairline); }
+.form-group:first-of-type { border-top: 0; padding-top: 0; }
+.form-group:last-of-type { padding-bottom: 6px; }
+.label-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.field-label { display: flex; align-items: baseline; gap: 8px; font-size: 12.5px; font-weight: 580; }
+.field-label .en { color: var(--ink-3); font-size: 8.5px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; }
+.field-hint { color: var(--ink-3); font-size: 10px; line-height: 1.6; }
+.form-group > .field-hint { margin-top: 8px; }
+.form-group .field-hint.is-warn { color: var(--warning); }
+.input-with-unit {
+  display: flex; align-items: center; gap: 8px; margin-top: 11px;
+  min-height: 46px; padding: 0 13px; background: var(--surface-2);
+  border: 1px solid var(--hairline); border-radius: 10px;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.input-with-unit:focus-within { border-color: rgba(57, 135, 229, 0.65); background: rgba(13, 20, 27, 0.95); }
+.input-with-unit .unit-prefix, .input-with-unit .unit-suffix { color: var(--ink-3); font-size: 11px; flex: 0 0 auto; }
+.input-with-unit input {
+  width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; padding: 0;
+  color: var(--ink); font-size: 18px; font-weight: 580; letter-spacing: -0.015em;
+  font-variant-numeric: tabular-nums;
+}
+.input-with-unit input::-webkit-outer-spin-button, .input-with-unit input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.input-with-unit input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+.quick-amounts { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+.quick-btn {
+  min-height: 26px; padding: 0 8px; border-radius: 5px; border: 1px solid var(--hairline);
+  background: transparent; color: var(--ink-3); font-size: 9.5px;
+  transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+}
+.quick-btn:hover { color: var(--ink-2); border-color: var(--hairline-strong); background: rgba(255, 255, 255, 0.03); }
+.quick-btn[aria-pressed="true"] { color: var(--ink); border-color: var(--hairline-strong); background: rgba(255, 255, 255, 0.05); }
+.number-inline {
+  display: flex; align-items: center; gap: 3px; min-height: 31px; padding: 0 8px;
+  background: var(--surface-2); border: 1px solid var(--hairline); border-radius: 7px;
+}
+.number-inline input { width: 55px; border: 0; outline: 0; background: transparent; text-align: right; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.number-inline span { color: var(--ink-3); font-size: 10px; }
+.range { width: 100%; margin: 17px 0 8px; }
+input[type="range"] {
+  --fill: 50%; -webkit-appearance: none; appearance: none; display: block;
+  height: 18px; border-radius: 999px; outline: none; cursor: pointer;
+  background: linear-gradient(to right, var(--series-1) 0 var(--fill), #26333e var(--fill) 100%) center / 100% 4px no-repeat;
+}
+input[type="range"]::-webkit-slider-runnable-track { height: 4px; background: transparent; border-radius: 999px; }
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 18px; height: 18px; margin-top: -7px;
+  border-radius: 50%; background: var(--ink); border: 4px solid var(--surface);
+  box-shadow: 0 0 0 2px var(--series-1);
+  transition: box-shadow 0.16s ease, transform 0.16s ease;
+}
+input[type="range"]:hover::-webkit-slider-thumb { box-shadow: 0 0 0 2px var(--series-1), 0 0 0 6px rgba(57, 135, 229, 0.13); }
+input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 2px var(--series-1), 0 0 0 7px rgba(57, 135, 229, 0.26); }
+input[type="range"]::-moz-range-track { height: 4px; background: #26333e; border-radius: 999px; }
+input[type="range"]::-moz-range-progress { height: 4px; background: var(--series-1); border-radius: 999px; }
+input[type="range"]::-moz-range-thumb { width: 11px; height: 11px; border-radius: 50%; background: var(--ink); border: 4px solid var(--surface); box-shadow: 0 0 0 2px var(--series-1); }
+.range-scale { display: flex; justify-content: space-between; gap: 8px; color: var(--ink-3); font-size: 9px; letter-spacing: 0.02em; }
+.risk-readout { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; }
+.risk-name { font-size: 15px; font-weight: 620; letter-spacing: -0.01em; }
+.risk-coef {
+  color: var(--ink-3); font-size: 9.5px; padding: 3px 7px; border-radius: 5px;
+  background: rgba(255, 255, 255, 0.035); border: 1px solid var(--hairline);
+  font-variant-numeric: tabular-nums;
+}
+.risk-ticks { display: flex; gap: 3px; align-items: center; width: 112px; flex: 0 0 112px; }
+.risk-tick { flex: 1 1 0; height: 4px; border-radius: 99px; background: #26333e; }
+.risk-tick.on { background: var(--series-2); }
+.advanced { border-top: 1px solid var(--hairline); }
+.advanced summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 16px 0; list-style: none; color: var(--ink-2); font-size: 11.5px; cursor: pointer; user-select: none;
+}
+.advanced summary::-webkit-details-marker { display: none; }
+.advanced summary span { color: var(--ink-3); font-size: 9.5px; margin-left: auto; }
+.advanced summary svg { width: 13px; height: 13px; color: var(--ink-3); transition: transform 0.2s ease; }
+.advanced[open] summary svg { transform: rotate(180deg); }
+.advanced-body { padding-bottom: 17px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.field { min-width: 0; }
+.field > .field-caption { display: block; margin-bottom: 6px; color: var(--ink-3); font-size: 9.5px; letter-spacing: 0.02em; }
+.select, .compact-input {
+  width: 100%; min-height: 37px; padding: 0 10px; border-radius: 7px;
+  border: 1px solid var(--hairline); background: var(--surface-2); color: var(--ink);
+  font-size: 11.5px; outline: none;
+}
+.compact-input-wrap { position: relative; }
+.compact-input { padding-right: 26px; font-variant-numeric: tabular-nums; }
+.compact-input-wrap .suffix { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); color: var(--ink-3); font-size: 9px; pointer-events: none; }
+.auto-badge {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  min-height: 17px; padding: 0 5px; display: inline-flex; align-items: center; border-radius: 4px;
+  border: 1px solid var(--hairline); color: var(--ink-3); font-size: 8px; pointer-events: none;
+}
+.assumption-note { margin-top: 2px; color: var(--ink-3); font-size: 9.5px; line-height: 1.7; }
+.text-btn {
+  display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: none;
+  color: var(--ink-3); font-size: 10px; transition: color 0.18s ease;
+}
+.text-btn:hover { color: var(--ink); }
+.text-btn svg { width: 12px; height: 12px; }
+.advanced-foot { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+.input-actions { margin-top: 20px; }
+.input-note { margin-top: 10px; text-align: center; color: var(--ink-3); font-size: 9px; }
+
+/* ---------- Result panel ---------- */
+.result-panel { position: relative; overflow: hidden; padding: 28px 30px 24px; }
+.result-panel::before {
+  content: ""; position: absolute; width: 320px; height: 240px; right: -140px; top: -150px;
+  background: radial-gradient(circle, rgba(57, 135, 229, 0.14), transparent 68%); pointer-events: none;
+}
+.result-panel > * { position: relative; z-index: 1; }
+.result-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.result-head h3 { margin-top: 7px; font-size: 17px; font-weight: 610; letter-spacing: -0.02em; }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border-radius: 999px;
+  font-size: 9.5px; font-weight: 600; white-space: nowrap; border: 1px solid var(--hairline);
+}
+.status-pill svg { width: 11px; height: 11px; flex: 0 0 auto; }
+.status-pill.good { color: #8fe08f; background: rgba(12, 163, 12, 0.10); border-color: rgba(12, 163, 12, 0.25); }
+.status-pill.warn { color: var(--warning); background: rgba(250, 178, 25, 0.08); border-color: rgba(250, 178, 25, 0.25); }
+.status-pill.critical { color: #ff9a9a; background: rgba(208, 59, 59, 0.10); border-color: rgba(208, 59, 59, 0.3); }
+.result-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 26px; margin-top: 21px; flex-wrap: wrap; }
+.hero-weight { font-size: clamp(64px, 7.3vw, 88px); line-height: 0.86; letter-spacing: -0.065em; font-weight: 630; }
+.hero-weight .unit { font-size: 0.38em; letter-spacing: -0.03em; margin-left: 3px; color: var(--ink-2); font-weight: 550; }
+.hero-weight-label { margin-top: 13px; color: var(--ink-2); font-size: 11.5px; }
+.hero-weight-label strong { color: var(--ink); font-weight: 580; }
+.result-thesis { max-width: 280px; color: var(--ink-3); font-size: 10.5px; line-height: 1.75; text-align: right; }
+.result-thesis strong { color: var(--ink-2); font-weight: 580; }
+.alloc-bar-wrap { margin-top: 22px; }
+.alloc-bar { display: flex; gap: 2px; height: 8px; border-radius: 999px; background: var(--surface); overflow: hidden; }
+.alloc-seg { height: 100%; border-radius: 999px; transition: width 0.42s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.alloc-seg.equity { background: var(--series-1); }
+.alloc-seg.rf { background: var(--series-2); }
+.alloc-legend { display: flex; justify-content: space-between; gap: 12px; margin-top: 9px; color: var(--ink-3); font-size: 9.5px; flex-wrap: wrap; }
+.alloc-legend .item { display: inline-flex; align-items: center; gap: 6px; }
+.alloc-legend strong { color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; }
+.swatch { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex: 0 0 auto; }
+.swatch.equity { background: var(--series-1); }
+.swatch.rf { background: var(--series-2); }
+.constraint-box { margin-top: 23px; padding: 15px 16px 13px; background: rgba(255, 255, 255, 0.022); border: 1px solid var(--hairline); border-radius: 13px; }
+.constraint-title { color: var(--ink-3); font-size: 9px; font-weight: 650; letter-spacing: 0.1em; text-transform: uppercase; }
+.constraint-row { margin-top: 12px; }
+.constraint-label { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; color: var(--ink-2); font-size: 10.5px; }
+.constraint-label strong { color: var(--ink); font-size: 11.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.meter { height: 4px; margin-top: 6px; border-radius: 99px; background: #26333e; overflow: hidden; }
+.meter > span { display: block; width: 50%; height: 100%; border-radius: 99px; background: var(--series-1); transition: width 0.42s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.constraint-final { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; margin-top: 13px; padding-top: 11px; border-top: 1px solid var(--hairline); color: var(--ink-3); font-size: 9.5px; }
+.constraint-final strong { color: var(--ink); font-size: 13px; font-weight: 620; font-variant-numeric: tabular-nums; }
+.constraint-final span { margin-left: auto; color: var(--ink-3); font-size: 8.5px; letter-spacing: 0.02em; }
+.metrics-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: 23px; border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline); }
+.metric { min-width: 0; padding: 14px 14px 14px 0; border-left: 1px solid var(--hairline); }
+.metric + .metric { padding-left: 14px; }
+.metric:first-child { border-left: 0; padding-left: 0; }
+.metric-label { color: var(--ink-3); font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.metric-value { margin-top: 6px; font-size: 21px; line-height: 1.2; letter-spacing: -0.03em; font-weight: 600; white-space: nowrap; }
+.metric-sub { margin-top: 3px; color: var(--ink-3); font-size: 8.5px; line-height: 1.45; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.insight {
+  display: flex; gap: 10px; margin-top: 18px; padding: 13px 14px;
+  border-left: 2px solid var(--series-1); background: rgba(57, 135, 229, 0.055);
+  border-radius: 0 9px 9px 0; color: var(--ink-2); font-size: 10.5px; line-height: 1.75;
+}
+.insight.warn { border-left-color: var(--warning); background: rgba(250, 178, 25, 0.055); }
+.insight.critical { border-left-color: var(--critical); background: rgba(208, 59, 59, 0.06); }
+.insight .icon { flex: 0 0 auto; margin-top: 2px; width: 13px; height: 13px; color: var(--series-1); }
+.insight.warn .icon { color: var(--warning); }
+.insight.critical .icon { color: #ff9a9a; }
+.insight strong { color: var(--ink); font-weight: 600; }
+.result-lower { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 22px; align-items: start; margin-top: 21px; }
+.scenario { padding-top: 1px; }
+.block-label { color: var(--ink-3); font-size: 9px; font-weight: 650; letter-spacing: 0.1em; text-transform: uppercase; }
+.scenario-caption { margin-top: 5px; color: var(--ink-3); font-size: 8.5px; line-height: 1.6; }
+.scenario-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin-top: 12px; }
+.scenario-item { padding: 10px 9px; border: 1px solid var(--hairline); border-radius: 8px; background: rgba(255, 255, 255, 0.018); }
+.scenario-item span { display: block; color: var(--ink-3); font-size: 8.5px; }
+.scenario-item strong { display: block; margin-top: 4px; color: var(--ink-2); font-size: 12px; font-weight: 580; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.scenario-item.base strong { color: var(--ink); }
+.table-label-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.mini-table { margin-top: 10px; }
+.mini-table th { padding: 0 0 7px; text-align: left; color: var(--ink-3); font-size: 8.5px; font-weight: 500; border-bottom: 1px solid var(--hairline); }
+.mini-table th:not(:first-child), .mini-table td:not(:first-child) { text-align: right; }
+.mini-table td { padding: 8px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.055); color: var(--ink-2); font-size: 10px; vertical-align: middle; }
+.mini-table td:first-child { color: var(--ink); }
+.mini-table tr:last-child td { border-bottom: 0; }
+.mini-table .asset-cell { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.asset-cell .asset-names { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.asset-cell .asset-names span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.asset-cell .asset-names small { color: var(--ink-3); font-size: 8px; }
+.num { font-variant-numeric: tabular-nums; }
+.result-footnote { margin-top: 17px; color: var(--ink-3); font-size: 8.5px; line-height: 1.7; }
+
+/* ---------- Charts ---------- */
+.model-grid { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 22px; align-items: stretch; }
+.chart-panel { padding: 24px 26px 20px; min-width: 0; }
+.chart-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 18px; }
+.chart-head h3 { margin-top: 6px; font-size: 16px; font-weight: 610; letter-spacing: -0.02em; }
+.chart-head-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; justify-content: flex-end; }
+.chart-stat { text-align: right; }
+.chart-stat span { display: block; color: var(--ink-3); font-size: 8.5px; }
+.chart-stat strong { display: block; margin-top: 3px; color: var(--ink-2); font-size: 12px; font-weight: 580; font-variant-numeric: tabular-nums; }
+.chart-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin: 17px 0 6px; color: var(--ink-2); font-size: 9.5px; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.legend-line { width: 17px; height: 2px; border-radius: 2px; background: var(--series-1); }
+.legend-line.dashed { background: none; border-top: 1px dashed var(--ink-3); height: 1px; }
+.legend-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.legend-dot.rf { background: var(--series-2); }
+.legend-dot.mkt { background: var(--series-1); }
+.legend-dot.you { background: var(--series-3); }
+.chart-box { position: relative; width: 100%; min-width: 0; }
+.chart-svg { width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+.chart-svg:focus-visible { outline: 2px solid var(--series-1); outline-offset: 4px; border-radius: 8px; }
+.chart-svg text { font-family: var(--font-sans); }
+.chart-caption { margin-top: 7px; color: var(--ink-3); font-size: 8.5px; line-height: 1.65; }
+.chart-tooltip {
+  position: absolute; z-index: 8; min-width: 138px; max-width: 230px; padding: 10px 12px;
+  background: rgba(8, 13, 18, 0.97); border: 1px solid var(--hairline-strong); border-radius: 9px;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45); pointer-events: none;
+  transform: translate(-50%, calc(-100% - 13px)); color: var(--ink-2); font-size: 9.5px; line-height: 1.55;
+}
+.tt-date { color: var(--ink-3); font-size: 8.5px; letter-spacing: 0.02em; }
+.tt-value { margin-top: 3px; color: var(--ink); font-size: 16px; font-weight: 600; letter-spacing: -0.02em; }
+.tt-rows { display: grid; gap: 2px; margin-top: 5px; }
+.tt-row { display: flex; justify-content: space-between; gap: 16px; white-space: nowrap; }
+.tt-row span:last-child { color: var(--ink); font-variant-numeric: tabular-nums; }
+.table-view { margin-top: 17px; border-top: 1px solid var(--hairline); max-height: 284px; overflow: auto; overscroll-behavior: contain; }
+.table-view::-webkit-scrollbar { width: 8px; height: 8px; }
+.table-view::-webkit-scrollbar-thumb { background: var(--surface-4); border-radius: 99px; border: 2px solid var(--surface); }
+.data-table { margin-top: 0; }
+.data-table th { position: sticky; top: 0; z-index: 1; background: var(--surface); padding: 10px 10px 9px 0; text-align: left; color: var(--ink-3); font-size: 8.5px; font-weight: 550; border-bottom: 1px solid var(--hairline); white-space: nowrap; }
+.data-table th:not(:first-child), .data-table td:not(:first-child) { text-align: right; padding-right: 0; padding-left: 18px; }
+.data-table td { padding: 9px 10px 9px 0; color: var(--ink-2); font-size: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.05); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.data-table td:first-child { color: var(--ink); }
+.data-table tr:last-child td { border-bottom: 0; }
+.data-table .group-head { color: var(--ink-3); font-size: 8.5px; letter-spacing: 0.04em; }
+.model-side { padding: 26px; display: flex; flex-direction: column; }
+.model-side h3 { margin-top: 7px; font-size: 20px; font-weight: 610; letter-spacing: -0.03em; }
+.formula {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 4px; margin-top: 21px;
+  padding: 19px 15px; border: 1px solid var(--hairline); border-radius: 11px; background: rgba(255, 255, 255, 0.02);
+  color: var(--ink); font-size: 14px; line-height: 1.7; font-variant-numeric: tabular-nums;
+}
+.formula var { font-style: normal; color: var(--ink-2); }
+.frac { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 3px; font-size: 10.5px; line-height: 1.25; }
+.frac > span:first-child { padding: 0 4px 3px; border-bottom: 1px solid var(--ink-3); }
+.frac > span:last-child { padding-top: 3px; }
+.model-copy { margin-top: 15px; color: var(--ink-3); font-size: 10px; line-height: 1.8; }
+.model-copy strong { color: var(--ink-2); font-weight: 580; }
+.model-ledger { margin-top: 20px; border-top: 1px solid var(--hairline); }
+.ledger-row { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; padding: 9px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.055); }
+.ledger-row span { color: var(--ink-3); font-size: 9.5px; }
+.ledger-row strong { color: var(--ink-2); font-size: 11.5px; font-weight: 580; font-variant-numeric: tabular-nums; }
+.cal-note { margin-top: auto; padding-top: 19px; }
+.cal-note-card { padding: 13px 14px; border: 1px solid var(--hairline); border-radius: 10px; background: rgba(255, 255, 255, 0.018); }
+.cal-note-card strong { display: block; color: var(--ink-2); font-size: 10px; font-weight: 600; }
+.cal-note-card p { margin-top: 5px; color: var(--ink-3); font-size: 9px; line-height: 1.75; }
+.model-side .text-link { display: inline-flex; align-items: center; gap: 5px; margin-top: 17px; color: var(--ink-3); font-size: 9.5px; }
+.model-side .text-link:hover { color: var(--ink); }
+
+/* ---------- Market section ---------- */
+.market-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; flex-wrap: wrap; margin-bottom: 19px; }
+.period-switch { display: inline-flex; align-items: center; gap: 2px; padding: 3px; border: 1px solid var(--hairline); border-radius: 9px; background: rgba(255, 255, 255, 0.018); }
+.period-btn {
+  min-height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent;
+  color: var(--ink-3); font-size: 9.5px; transition: color 0.18s ease, background 0.18s ease;
+}
+.period-btn:hover { color: var(--ink-2); }
+.period-btn[aria-pressed="true"] { background: rgba(255, 255, 255, 0.075); color: var(--ink); }
+.market-toolbar-note { color: var(--ink-3); font-size: 9px; }
+.market-chart-panel { padding: 24px 26px 18px; }
+.market-chart-box { margin-top: 13px; }
+.market-data-note { display: flex; justify-content: space-between; gap: 14px; flex-wrap: wrap; margin-top: 3px; color: var(--ink-3); font-size: 8.5px; line-height: 1.6; }
+.market-data-note .source { display: inline-flex; align-items: center; gap: 5px; }
+
+/* ---------- Method ---------- */
+.method-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px; padding-top: 8px; }
+.method-card { padding-top: 18px; border-top: 1px solid var(--hairline); }
+.method-index { color: var(--series-2); font-size: 9px; font-weight: 650; letter-spacing: 0.1em; }
+.method-card h3 { margin-top: 13px; font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+.method-card p { margin-top: 9px; color: var(--ink-3); font-size: 10.5px; line-height: 1.8; }
+.method-card code { color: var(--ink-2); font-family: var(--font-sans); font-size: 10px; }
+.method-card .small-note { display: block; margin-top: 8px; color: var(--ink-3); font-size: 8.5px; }
+.source-row {
+  display: flex; justify-content: space-between; align-items: center; gap: 18px; flex-wrap: wrap;
+  margin-top: 46px; padding: 17px 0 18px; border-top: 1px solid var(--hairline); border-bottom: 1px solid var(--hairline);
+  color: var(--ink-3); font-size: 9px;
+}
+.source-links { display: flex; gap: 16px; flex-wrap: wrap; }
+.source-links a { color: var(--ink-2); border-bottom: 1px solid rgba(255, 255, 255, 0.14); }
+.source-links a:hover { color: var(--ink); border-bottom-color: var(--ink-3); }
+.disclaimer { max-width: 900px; margin-top: 22px; color: var(--ink-3); font-size: 9px; line-height: 1.8; }
+.site-footer { padding: 34px 0 38px; color: var(--ink-3); font-size: 9px; }
+.footer-inner { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+.footer-mark { display: inline-flex; align-items: center; gap: 8px; color: var(--ink-2); font-size: 10px; }
+.footer-mark svg { width: 17px; height: 17px; }
+.footer-meta { text-align: right; line-height: 1.7; }
+.footer-meta span { display: block; }
+
+
+.sr-only {
+  position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+
+.inline-link {
+  color: var(--ink-2); border-bottom: 1px solid rgba(255,255,255,0.16);
+  transition: color 0.18s ease, border-color 0.18s ease;
+}
+.inline-link:hover { color: var(--ink); border-bottom-color: var(--ink-3); }
+
+/* ---------- Constituent split ---------- */
+.stock-split { margin-top: 22px; padding: 27px 28px 24px; scroll-margin-top: 92px; }
+.stock-split-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 34px; flex-wrap: wrap; }
+.stock-split-copy { max-width: 650px; }
+.stock-split h3 { margin-top: 7px; font-size: 21px; font-weight: 610; letter-spacing: -0.03em; }
+.stock-split-desc { margin-top: 9px; color: var(--ink-3); font-size: 10.5px; line-height: 1.8; }
+.stock-split-desc strong { color: var(--ink-2); font-weight: 580; }
+.stock-summary {
+  display: grid; grid-template-columns: repeat(3, minmax(115px, 1fr)); min-width: 420px;
+  border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; background: rgba(255,255,255,0.018);
+}
+.stock-summary-item { min-width: 0; padding: 12px 14px; border-left: 1px solid var(--hairline); }
+.stock-summary-item:first-child { border-left: 0; }
+.stock-summary-item span { display: block; color: var(--ink-3); font-size: 8.5px; white-space: nowrap; }
+.stock-summary-item strong { display: block; margin-top: 4px; color: var(--ink); font-size: 16px; font-weight: 600; letter-spacing: -0.025em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stock-summary-item small { display: block; margin-top: 2px; color: var(--ink-3); font-size: 8px; white-space: nowrap; }
+.stock-table-wrap { margin-top: 23px; border-top: 1px solid var(--hairline); overflow-x: auto; }
+.stock-table { width: 100%; table-layout: fixed; }
+.stock-table th {
+  padding: 10px 12px 9px 0; text-align: left; color: var(--ink-3); font-size: 8.5px;
+  font-weight: 500; border-bottom: 1px solid var(--hairline); white-space: nowrap;
+}
+.stock-table th:nth-child(1) { width: 48%; }
+.stock-table th:nth-child(2) { width: 14%; }
+.stock-table th:nth-child(3) { width: 19%; text-align: right; }
+.stock-table th:nth-child(4) { width: 19%; text-align: right; }
+.stock-table td {
+  padding: 10px 12px 10px 0; border-bottom: 1px solid rgba(255,255,255,0.055);
+  color: var(--ink-2); font-size: 10.5px; vertical-align: middle;
+}
+.stock-table th:not(:first-child), .stock-table td:not(:first-child) { text-align: right; }
+.stock-name-line { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.stock-name-line strong { color: var(--ink); font-size: 11.5px; font-weight: 580; white-space: nowrap; }
+.stock-name-line code { color: var(--ink-3); font-family: var(--font-sans); font-size: 8.5px; letter-spacing: 0.02em; white-space: nowrap; }
+.stock-sector { color: var(--ink-3); font-size: 9.5px; }
+.stock-weight-cell { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; min-width: 0; }
+.stock-weight-cell span { color: var(--ink-2); font-size: 10px; font-variant-numeric: tabular-nums; }
+.stock-weight-track { width: 62px; height: 3px; border-radius: 99px; background: #26333e; overflow: hidden; }
+.stock-weight-track span { display: block; height: 100%; width: 0; border-radius: 99px; background: var(--series-1); }
+.stock-amount { color: var(--ink); font-weight: 560; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stock-table tr.stock-residual td { border-top: 1px solid var(--hairline-strong); background: rgba(255,255,255,0.017); }
+.stock-table tr.stock-residual td:first-child { border-radius: 6px 0 0 6px; padding-left: 8px; margin-left: -8px; }
+.stock-table tr.stock-residual td:last-child { border-radius: 0 6px 6px 0; padding-right: 8px; }
+.stock-residual .stock-name-line strong { color: var(--ink-2); }
+.stock-table tr.stock-total td { border-bottom: 0; padding-top: 11px; color: var(--ink); font-weight: 600; }
+.stock-table tr.stock-total td:first-child { font-weight: 600; }
+.stock-empty {
+  margin-top: 22px; padding: 17px; border: 1px dashed var(--hairline-strong); border-radius: 10px;
+  color: var(--ink-3); font-size: 10.5px; line-height: 1.7; text-align: center;
+}
+.stock-foot {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 22px; flex-wrap: wrap;
+  margin-top: 15px; color: var(--ink-3); font-size: 8.5px; line-height: 1.7;
+}
+.stock-foot a { color: var(--ink-2); border-bottom: 1px solid rgba(255,255,255,0.15); }
+.stock-foot a:hover { color: var(--ink); }
+.stock-caveat { margin-top: 10px; color: var(--ink-3); font-size: 8.5px; line-height: 1.75; }
+.stock-caveat strong { color: var(--ink-2); font-weight: 560; }
+
+/* Corrections / interaction states */
+.chart-tooltip.below { transform: translate(-50%, 13px); }
+.mini-table tr.total td { border-top: 1px solid var(--hairline-strong); border-bottom: 0; color: var(--ink); font-weight: 600; padding-top: 10px; }
+.auto-badge.manual { color: var(--warning); border-color: rgba(250, 178, 25, 0.3); }
+.result-panel.flash { animation: result-flash 0.7s ease; }
+@keyframes result-flash {
+  0% { box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 0 0 0 rgba(57,135,229,.32); }
+  45% { box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 0 0 4px rgba(57,135,229,.16); }
+  100% { box-shadow: inset 0 1px 0 rgba(255,255,255,.035), 0 0 0 0 rgba(57,135,229,0); }
+}
+.text-btn[aria-expanded="true"] svg { transform: rotate(180deg); }
+.text-btn svg { transition: transform 0.18s ease; }
+.cml-point:focus-visible { outline: none; }
+.cml-point:focus-visible circle:nth-of-type(3) { stroke: var(--ink); stroke-width: 3; }
+
+/* ---------- Motion / responsiveness ---------- */
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
+@media (max-width: 1120px) {
+  .main-nav { gap: 18px; }
+  .hero { grid-template-columns: minmax(0, 1fr) minmax(320px, 0.72fr); gap: 38px; padding-top: 54px; }
+  .alloc-grid { grid-template-columns: minmax(310px, 0.82fr) minmax(0, 1.18fr); }
+  .result-thesis { max-width: 225px; }
+  .model-grid { grid-template-columns: minmax(0, 1fr) 320px; }
+  .model-side { padding: 23px; }
+}
+@media (max-width: 960px) {
+  .header-clock { display: none; }
+  .main-nav { display: none; }
+  .hero { grid-template-columns: 1fr; gap: 34px; padding: 46px 0 36px; }
+  .hero-copy { max-width: 760px; }
+  .rate-panel { max-width: none; }
+  .strip-grid { grid-template-columns: 1fr 1fr; }
+  .stat-tile:nth-child(3) { border-left: 0; padding-left: 0; border-top: 1px solid var(--hairline); }
+  .stat-tile:nth-child(4) { border-top: 1px solid var(--hairline); }
+  .alloc-grid { grid-template-columns: 1fr; }
+  .input-panel { order: 1; }
+  .result-panel { order: 2; }
+  .model-grid { grid-template-columns: 1fr; }
+  .model-side { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+  .model-side > .panel-label, .model-side > h3 { grid-column: 1 / -1; }
+  .model-side .formula { margin-top: 0; }
+  .model-side .model-ledger { margin-top: 0; }
+  .model-side .cal-note { margin-top: 0; padding-top: 0; grid-column: 1 / -1; }
+  .model-side .text-link { grid-column: 1 / -1; margin-top: 0; }
+  .method-grid { grid-template-columns: 1fr 1fr; gap: 24px 30px; }
+  .stock-split { padding: 22px 20px 20px; }
+  .stock-split-head { gap: 20px; }
+  .stock-summary { width: 100%; min-width: 0; }
+  .stock-summary-item { padding: 11px 12px; }
+  .stock-summary-item strong { font-size: 15px; }
+}
+@media (max-width: 720px) {
+  .shell { padding: 0 19px; }
+  .header-inner { height: 60px; gap: 12px; }
+  .brand-copy span { display: none; }
+  .data-status { font-size: 10px; padding: 0 8px; min-height: 30px; }
+  .icon-btn { width: 31px; height: 31px; }
+  .hero { padding-top: 38px; }
+  .hero h1 { font-size: clamp(42px, 11.6vw, 62px); }
+  .hero-sub { margin-top: 19px; line-height: 1.8; }
+  .hero-actions { margin-top: 25px; gap: 9px; }
+  .btn { min-height: 42px; padding: 0 14px; font-size: 11.5px; }
+  .rate-panel { padding: 21px 19px 17px; border-radius: 19px; }
+  .rate-value { font-size: 41px; }
+  .rate-main { margin-top: 20px; }
+  .strip-head { padding: 12px 0; align-items: flex-start; }
+  .strip-head .right { display: none; }
+  .stat-tile { padding: 16px 12px 16px 0; }
+  .stat-tile:nth-child(even) { padding-left: 16px; }
+  .tile-price { font-size: 26px; gap: 7px; }
+  .tile-price .delta { font-size: 10px; }
+  .tile-value { font-size: 21px; }
+  .tile-label { font-size: 8.5px; white-space: nowrap; }
+  .section { padding-top: 58px; scroll-margin-top: 74px; }
+  .section-head { display: block; padding-top: 21px; margin-bottom: 21px; }
+  .section-title { font-size: 30px; margin-top: 9px; }
+  .section-desc { margin-top: 12px; font-size: 11.5px; }
+  .panel { border-radius: 18px; }
+  .input-panel, .chart-panel, .result-panel { padding: 19px 17px; }
+  .result-head { gap: 10px; }
+  .status-pill { font-size: 8.5px; padding: 5px 7px; }
+  .result-head h3 { font-size: 15px; }
+  .result-top { margin-top: 17px; gap: 14px; }
+  .hero-weight { font-size: 70px; }
+  .hero-weight-label { font-size: 10.5px; }
+  .result-thesis { max-width: 100%; text-align: left; order: 3; flex-basis: 100%; font-size: 10px; }
+  .metrics-grid { grid-template-columns: 1fr 1fr; }
+  .metric { padding: 12px 12px 12px 0; }
+  .metric:nth-child(3) { border-left: 0; padding-left: 0; }
+  .metric:nth-child(3), .metric:nth-child(4) { border-top: 1px solid var(--hairline); }
+  .metric:nth-child(4) { padding-left: 12px; }
+  .result-lower { grid-template-columns: 1fr; gap: 19px; }
+  .constraint-box { padding: 13px 12px 11px; }
+  .insight { font-size: 10px; }
+  .scenario-grid { gap: 6px; }
+  .scenario-item { padding: 9px 7px; }
+  .scenario-item strong { font-size: 10.5px; }
+  .chart-head { gap: 10px; }
+  .chart-head-right { gap: 10px; }
+  .chart-legend { gap: 11px; margin-top: 13px; font-size: 9px; }
+  .market-toolbar { align-items: flex-start; gap: 9px; }
+  .period-switch { width: 100%; justify-content: space-between; }
+  .period-btn { flex: 1; padding: 0 7px; }
+  .market-toolbar-note { display: none; }
+  .chart-panel { padding-bottom: 14px; }
+  .model-side { display: block; padding: 20px 17px; }
+  .model-side .formula { margin-top: 19px; }
+  .model-side .model-ledger { margin-top: 18px; }
+  .model-side .cal-note { margin-top: 19px; padding-top: 0; }
+  .model-side .text-link { margin-top: 16px; }
+  .method-grid { grid-template-columns: 1fr; gap: 22px; }
+  .source-row { margin-top: 32px; align-items: flex-start; }
+  .source-links { flex-direction: column; gap: 7px; }
+  .footer-meta { text-align: left; }
+  .footer-inner { flex-direction: column; }
+  .header-tools { gap: 7px; }
+  .chart-tooltip { max-width: 190px; }
+  .stock-split { margin-top: 18px; padding: 19px 17px 17px; border-radius: 18px; }
+  .stock-split h3 { font-size: 17px; }
+  .stock-split-desc { font-size: 10px; }
+  .stock-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .stock-summary-item { padding: 9px 8px; }
+  .stock-summary-item span { font-size: 8px; white-space: normal; line-height: 1.35; min-height: 22px; }
+  .stock-summary-item strong { font-size: 13px; }
+  .stock-summary-item small { display: none; }
+  .stock-table th:nth-child(2), .stock-table td:nth-child(2) { display: none; }
+  .stock-table th:nth-child(1) { width: 48%; }
+  .stock-table th:nth-child(3) { width: 24%; }
+  .stock-table th:nth-child(4) { width: 28%; }
+  .stock-table th, .stock-table td { padding-right: 6px; }
+  .stock-table td { font-size: 10px; padding-top: 9px; padding-bottom: 9px; }
+  .stock-name-line { gap: 5px; flex-wrap: wrap; }
+  .stock-name-line strong { font-size: 10.5px; }
+  .stock-name-line code { font-size: 8px; }
+  .stock-weight-track { width: 42px; }
+  .stock-amount { font-size: 10px; }
+  .stock-foot { gap: 8px; flex-direction: column; }
+}
+@media (max-width: 420px) {
+  .shell { padding: 0 14px; }
+  .data-status span:not(.status-dot) { max-width: 78px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .brand-copy strong { font-size: 13px; }
+  .hero h1 { font-size: 52px; }
+  .rate-main { gap: 9px; }
+  .rate-value { font-size: 37px; }
+  .tenor-btn { padding-left: 5px; padding-right: 3px; }
+  .tenor-btn strong { font-size: 10.5px; }
+  .tenor-btn span { font-size: 8px; }
+  .form-row { grid-template-columns: 1fr; gap: 10px; }
+  .chart-stat strong { font-size: 10.5px; }
+  .chart-stat span { font-size: 8px; }
+  .chart-head h3 { font-size: 14px; }
+  .chart-legend { gap: 9px; }
+  .chart-legend .legend-item { font-size: 8.5px; }
+  .hero-weight { font-size: 64px; }
+}
+</style>
+</head>
+<body>
+<a class="skip-link" href="#allocator">跳到配置工具</a>
+<div class="page-grid" aria-hidden="true"></div>
+
+<header class="site-header">
+  <div class="shell header-inner">
+    <a class="brand" href="#" aria-label="配置线首页">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none">
+          <path d="M4 18.5L9 13l3 2.2L20 5.5" stroke="var(--series-1)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="20" cy="5.5" r="2" fill="var(--series-2)"/>
+          <path d="M4 5.5v13h16" stroke="rgba(255,255,255,.22)" stroke-width="1"/>
+        </svg>
+      </span>
+      <span class="brand-copy"><strong>配置线</strong><span>ALLOCATION LINE</span></span>
+    </a>
+    <nav class="main-nav" aria-label="页面导航">
+      <a href="#market">行情</a>
+      <a href="#allocator">配置计算</a>
+      <a href="#stockSplit">个股拆分</a>
+      <a href="#model">CML 图示</a>
+      <a href="#method">模型说明</a>
+    </nav>
+    <div class="header-tools">
+      <div class="data-status" id="dataStatus" role="status" aria-live="polite" title="行情数据连接状态">
+        <span class="status-dot loading" id="statusDot"></span>
+        <span id="statusText">正在同步行情</span>
+      </div>
+      <button class="icon-btn" id="refreshBtn" type="button" aria-label="刷新行情数据" title="刷新行情">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20 11a8 8 0 1 0-2.3 5.6"/><path d="M20 4v7h-7"/>
+        </svg>
+      </button>
+      <div class="header-clock" id="headerClock" aria-label="北京时间"></div>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="shell">
+    <section class="hero" aria-labelledby="heroTitle">
+      <div class="hero-copy">
+        <div class="eyebrow"><span class="rule"></span>沪深300 · CML / CAL 资产配置模型</div>
+        <h1 id="heroTitle">资产配置</h1>
+        <p class="hero-sub">以沪深300代表市场组合，以中国国债收益率作为无风险利率。输入可用资金、目标年化收益与风险偏好，计算沪深300与无风险资产的配置权重，以及组合预期收益和风险指标。</p>
+        <div class="hero-actions">
+          <a class="btn btn-primary" href="#allocator">
+            开始配置
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+          </a>
+          <a class="btn btn-ghost" href="#method">查看计算说明</a>
+        </div>
+        <p class="hero-footnote">无杠杆 · 不做空 · 结果随行情与输入实时更新</p>
+      </div>
+
+      <aside class="rate-panel" aria-labelledby="rfTitle">
+        <div class="panel-head">
+          <div>
+            <span class="panel-label">Live risk-free rate</span>
+            <h2 id="rfTitle">无风险利率</h2>
+          </div>
+          <span class="live-pill"><span class="status-dot live" aria-hidden="true"></span><span id="rfLiveLabel">实时抓取</span></span>
+        </div>
+        <div class="rate-main">
+          <div class="rate-value"><span id="rfValue">1.612</span><span class="rate-unit">%</span></div>
+          <span class="rate-delta" id="rfChange">↑ 0.9 bp</span>
+        </div>
+        <div class="rate-caption">
+          <span id="rfTenorLabel">中国 10 年期国债到期收益率</span>
+          <span id="rfDate">数据日 11-13</span>
+        </div>
+        <div class="rf-spark-wrap">
+          <svg id="rfSpark" role="img" aria-label="近30个交易日无风险利率走势"></svg>
+        </div>
+        <div class="tenor-switch" role="group" aria-label="选择无风险利率期限">
+          <button class="tenor-btn" type="button" data-tenor="2Y" aria-pressed="false"><span>2Y</span><strong id="rate2Y">1.232%</strong></button>
+          <button class="tenor-btn" type="button" data-tenor="5Y" aria-pressed="false"><span>5Y</span><strong id="rate5Y">1.331%</strong></button>
+          <button class="tenor-btn" type="button" data-tenor="10Y" aria-pressed="true"><span>10Y</span><strong id="rate10Y">1.612%</strong></button>
+          <button class="tenor-btn" type="button" data-tenor="30Y" aria-pressed="false"><span>30Y</span><strong id="rate30Y">2.060%</strong></button>
+        </div>
+        <p class="rate-note">点击期限可切换模型中的 Rf。严格而言，无风险利率应与投资期限匹配；10Y 国债含有久期风险，此处作为市场可观测代理。</p>
+      </aside>
+    </section>
+
+    <section class="market-strip" id="market" aria-label="市场概览">
+      <div class="strip-head">
+        <div class="left">
+          <span class="status-dot live" id="marketDot" aria-hidden="true"></span>
+          <strong>沪深300</strong>
+          <span>CSI 300 · 市场组合代理</span>
+        </div>
+        <div class="right">行情价格与无风险利率分别抓取，页面每 30 秒尝试更新。</div>
+      </div>
+      <div class="strip-grid">
+        <article class="stat-tile" aria-label="沪深300最新行情">
+          <div class="tile-label"><span class="mini-dot" aria-hidden="true"></span>市场组合 M <span class="source-chip" id="marketSourceBadge"><span class="status-dot live" aria-hidden="true"></span><span id="marketSourceText">实时</span></span></div>
+          <div class="tile-price"><span id="mktPrice">3,993.76</span><span class="delta is-down" id="mktPct">▼ −0.56%</span></div>
+          <div class="tile-sub"><span id="mktChange" class="is-down">−22.53</span> <span aria-hidden="true">·</span> <span id="mktTime">11-16 12:00</span></div>
+          <div class="tile-foot">52周区间 <strong id="mkt52w">3,985.50 — 5,059.66</strong></div>
+        </article>
+        <article class="stat-tile" aria-label="市场预期年化收益">
+          <div class="tile-label">预期市场收益 <span class="panel-label" style="font-size:8px">E(Rm)</span></div>
+          <div class="tile-value" id="tileExpected">7.47%</div>
+          <div class="tile-sub" id="tileExpectedNote">近8年价格收益 + 股息率参考</div>
+          <div class="tile-foot">不是预测；来自历史样本与明确假设</div>
+        </article>
+        <article class="stat-tile" aria-label="市场年化波动率">
+          <div class="tile-label">市场年化波动 <span class="panel-label" style="font-size:8px">σm</span></div>
+          <div class="tile-value" id="tileVol">19.02%</div>
+          <div class="tile-sub">沪深300日收益标准差 × √252</div>
+          <div class="tile-foot" id="tileSample">样本 2018-11 — 2026-11</div>
+        </article>
+        <article class="stat-tile" aria-label="市场夏普比率">
+          <div class="tile-label">市场夏普 <span class="panel-label" style="font-size:8px">SR</span></div>
+          <div class="tile-value" id="tileSharpe">0.31</div>
+          <div class="tile-sub">(预期收益 − Rf) / 波动率</div>
+          <div class="tile-foot">也是 CML 的斜率</div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section" id="allocator" aria-labelledby="allocTitle">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">02 / 配置计算模块</div>
+          <h2 class="section-title" id="allocTitle">配置参数与计算结果</h2>
+        </div>
+        <p class="section-desc">输入可用资金、目标年化收益和风险偏好，系统按 CML / CAL 模型计算沪深300与无风险资产的权重，并给出组合收益与风险指标。</p>
+      </div>
+
+      <div class="alloc-grid">
+        <div class="panel input-panel" aria-label="配置输入">
+          <div class="panel-head">
+            <div>
+              <span class="panel-label">Input parameters</span>
+              <h3 style="margin-top:7px">配置参数输入</h3>
+            </div>
+            <span class="badge">STEP 01</span>
+          </div>
+
+          <div class="form-group">
+            <div class="label-row">
+              <label class="field-label" for="capitalInput">可用资金 <span class="en">Capital</span></label>
+              <span class="field-hint">结果自动换算</span>
+            </div>
+            <div class="input-with-unit">
+              <span class="unit-prefix">¥</span>
+              <input id="capitalInput" type="number" value="100" min="1" max="100000" step="1" inputmode="decimal" aria-describedby="capitalHint">
+              <span class="unit-suffix">万元</span>
+            </div>
+            <div class="quick-amounts" aria-label="快捷资金金额">
+              <button class="quick-btn" type="button" data-capital="10">10万</button>
+              <button class="quick-btn" type="button" data-capital="50">50万</button>
+              <button class="quick-btn" type="button" data-capital="100" aria-pressed="true">100万</button>
+              <button class="quick-btn" type="button" data-capital="300">300万</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="label-row">
+              <label class="field-label" for="targetRange">目标年化收益 <span class="en">Target</span></label>
+              <span class="number-inline"><input id="targetNumber" type="number" value="5.0" min="0" max="20" step="0.1" inputmode="decimal" aria-label="目标年化收益率百分比"><span>%</span></span>
+            </div>
+            <input class="range" id="targetRange" type="range" min="0" max="20" step="0.1" value="5" aria-describedby="targetHint">
+            <div class="range-scale"><span>0%</span><span>5%</span><span>10%</span><span>15%</span><span>20%</span></div>
+            <p class="field-hint" id="targetHint">无杠杆下，满仓沪深300的预期收益约 7.47%。</p>
+          </div>
+
+          <div class="form-group">
+            <div class="label-row">
+              <label class="field-label" for="riskRange" id="riskLabelWrap">风险偏好 <span class="en">Risk appetite</span></label>
+              <span class="risk-coef" id="riskA">A = 2.6</span>
+            </div>
+            <div class="risk-readout">
+              <span class="risk-name" id="riskLabel">成长型</span>
+              <div class="risk-ticks" id="riskTicks" aria-hidden="true"></div>
+            </div>
+            <input class="range" id="riskRange" type="range" min="1" max="10" step="1" value="7" aria-labelledby="riskLabelWrap" aria-valuetext="成长型，风险厌恶系数 2.6">
+            <div class="range-scale"><span>极保守</span><span>平衡</span><span>极进取</span></div>
+            <p class="field-hint" id="riskDesc">追求长期增长，能承受较明显的阶段性波动。</p>
+          </div>
+
+          <details class="advanced">
+            <summary>模型假设 <span>可手动调整</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+            <div class="advanced-body">
+              <div class="form-row">
+                <label class="field">
+                  <span class="field-caption">估计窗口</span>
+                  <select class="select" id="windowSelect" aria-label="历史样本估计窗口">
+                    <option value="3y">近 3 年</option>
+                    <option value="5y">近 5 年</option>
+                    <option value="all" selected>近 8 年（全部）</option>
+                  </select>
+                </label>
+                <label class="field">
+                  <span class="field-caption">股息率参考</span>
+                  <span class="compact-input-wrap">
+                    <input class="compact-input" id="dividendInput" type="number" value="3.01" min="0" max="10" step="0.01" inputmode="decimal" aria-label="股息率参考百分比">
+                    <span class="suffix">%</span>
+                  </span>
+                </label>
+              </div>
+              <div class="form-row">
+                <label class="field">
+                  <span class="field-caption">预期市场年化收益</span>
+                  <span class="compact-input-wrap">
+                    <input class="compact-input" id="muInput" type="number" value="7.47" min="-5" max="30" step="0.01" inputmode="decimal" aria-label="预期市场年化收益率百分比">
+                    <span class="auto-badge" id="muAuto">自动</span>
+                  </span>
+                </label>
+                <label class="field">
+                  <span class="field-caption">年化波动率</span>
+                  <span class="compact-input-wrap">
+                    <input class="compact-input" id="volInput" type="number" value="19.02" min="1" max="100" step="0.01" inputmode="decimal" aria-label="市场年化波动率百分比">
+                    <span class="auto-badge" id="volAuto">自动</span>
+                  </span>
+                </label>
+              </div>
+              <p class="assumption-note" id="assumptionNote">自动值 = 近8年价格收益年化 4.46% + 股息率参考 3.01%。</p>
+              <div class="advanced-foot">
+                <button class="text-btn" id="resetAssumptions" type="button">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.6"/><path d="M20 4v7h-7"/></svg>
+                  恢复数据推算值
+                </button>
+                <span class="field-hint">固定：无杠杆 · 不做空</span>
+              </div>
+            </div>
+          </details>
+
+          <div class="input-actions">
+            <button class="btn btn-primary btn-full" type="button" id="calcBtn">
+              计算配置结果
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+            </button>
+            <p class="input-note">参数变化后自动重算；按钮用于确认结果并定位到输出区域。</p>
+          </div>
+        </div>
+
+        <article class="panel result-panel" id="resultPanel">
+          <div class="result-head">
+            <div>
+              <span class="panel-label">Allocation result</span>
+              <h3>资产配置结果</h3>
+            </div>
+            <span class="status-pill good" id="goalStatus">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4.2 4.2L19 6.5"/></svg>
+              <span id="goalStatusText">目标可达成</span>
+            </span>
+          </div>
+
+          <div class="result-top">
+            <div>
+              <div class="hero-weight"><span id="heroWeight">57.9</span><span class="unit">%</span></div>
+              <p class="hero-weight-label">配置于 <strong>沪深300 市场组合</strong></p>
+            </div>
+            <p class="result-thesis" id="resultThesis">目标收益所需仓位低于风险偏好允许上限，因此权重由目标收益决定。</p>
+          </div>
+
+          <div class="alloc-bar-wrap">
+            <div class="alloc-bar" aria-hidden="true">
+              <span class="alloc-seg equity" id="segEquity" style="width:57.9%"></span>
+              <span class="alloc-seg rf" id="segRf" style="width:42.1%"></span>
+            </div>
+            <div class="alloc-legend">
+              <span class="item"><i class="swatch equity" aria-hidden="true"></i>沪深300 <strong id="legendEquity">57.9%</strong></span>
+              <span class="item"><i class="swatch rf" aria-hidden="true"></i>无风险资产 <strong id="legendRf">42.1%</strong></span>
+            </div>
+          </div>
+
+          <div class="constraint-box">
+            <div class="constraint-title">Double constraint / 双重约束</div>
+            <div class="constraint-row">
+              <div class="constraint-label"><span>目标收益所需仓位</span><strong id="constraintTarget">57.9%</strong></div>
+              <div class="meter" role="img" aria-label="目标收益所需仓位"><span id="meterTarget" style="width:57.9%"></span></div>
+            </div>
+            <div class="constraint-row">
+              <div class="constraint-label"><span>风险偏好允许仓位</span><strong id="constraintRisk">62.3%</strong></div>
+              <div class="meter" role="img" aria-label="风险偏好允许仓位"><span id="meterRisk" style="width:62.3%"></span></div>
+            </div>
+            <div class="constraint-final">
+              最终权重取两者较小值 <strong id="constraintFinal">57.9%</strong>
+              <span>min(y目标, y风险) · 无杠杆</span>
+            </div>
+          </div>
+
+          <div class="metrics-grid">
+            <div class="metric">
+              <div class="metric-label">预期年化收益</div>
+              <div class="metric-value" id="metricReturn">5.00%</div>
+              <div class="metric-sub" id="metricReturnSub">目标 5.00%</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">组合年化波动</div>
+              <div class="metric-value" id="metricVol">11.01%</div>
+              <div class="metric-sub">σp = y × σm</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">夏普比率</div>
+              <div class="metric-value" id="metricSharpe">0.31</div>
+              <div class="metric-sub" id="metricSharpeSub">与市场组合相同</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">1年 95% VaR</div>
+              <div class="metric-value" id="metricVar">12.9%</div>
+              <div class="metric-sub" id="metricVarSub">约 ¥128,700</div>
+            </div>
+          </div>
+
+          <div class="insight" id="insight">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3 3.5 7.5 12 12l8.5-4.5L12 3Z"/><path d="m3.5 12 8.5 4.5 8.5-4.5"/><path d="m3.5 16.5 8.5 4.5 8.5-4.5"/></svg>
+            <span id="insightText">当前无风险利率为 1.61%，沪深300风险溢价为 5.86%。目标收益 5.00% 对应约 57.9% 的沪深300仓位，风险偏好允许 62.3%；取两者较低值 57.9%，按当前假设达到目标。</span>
+          </div>
+
+          <div class="result-lower">
+            <div class="scenario">
+              <div class="block-label">1-year scenarios</div>
+              <div class="scenario-caption">以当前资金按 1 年持有估算：预期收益 ± 一个标准差。</div>
+              <div class="scenario-grid">
+                <div class="scenario-item"><span>−1σ</span><strong id="scenarioLow">¥936,000</strong></div>
+                <div class="scenario-item base"><span>中枢</span><strong id="scenarioBase">¥1,050,000</strong></div>
+                <div class="scenario-item"><span>+1σ</span><strong id="scenarioHigh">¥1,164,000</strong></div>
+              </div>
+            </div>
+            <div class="allocation-table">
+              <div class="table-label-row">
+                <div class="block-label">Allocation detail</div>
+                <span class="field-hint"><a class="inline-link" href="#stockSplit">个股拆分 ↓</a> · 不含费用</span>
+              </div>
+              <table class="mini-table">
+                <thead><tr><th>资产</th><th>权重</th><th>金额</th></tr></thead>
+                <tbody id="allocTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <p class="result-footnote">配置金额 = 可用资金 × 权重。沪深300权益仓位可用指数基金或 ETF 实现，也可按下方成分股权重拆分；两种方式不叠加。无风险端可用国债 ETF、短债基金或货币基金。目标与收益均为模型推算，不构成收益承诺。</p>
+          <p class="sr-only" id="liveSummary" role="status" aria-live="polite"></p>
+        </article>
+      </div>
+
+
+      <div class="panel stock-split" id="stockSplit" aria-labelledby="stockSplitTitle">
+        <div class="stock-split-head">
+          <div class="stock-split-copy">
+            <span class="panel-label">Constituent breakdown</span>
+            <h3 id="stockSplitTitle">沪深300个股拆分参考</h3>
+            <p class="stock-split-desc">以下为权益仓位的执行参考，不改变上方的资产配置比例。既可用一只沪深300指数基金完成，也可按中证指数官方前十大成分股权重直接买入个股，再用指数基金覆盖其余成分股；<strong>两种方式不叠加</strong>。该表按指数权重拆分，不是基于个股评级的主动选股。</p>
+          </div>
+          <div class="stock-summary" role="group" aria-label="权益仓位拆分摘要">
+            <div class="stock-summary-item">
+              <span>沪深300仓位</span>
+              <strong id="stockEquityAmount">¥—</strong>
+              <small>权益风险资产</small>
+            </div>
+            <div class="stock-summary-item">
+              <span>前十大个股</span>
+              <strong id="stockDirectAmount">¥—</strong>
+              <small>占权益 22.26%</small>
+            </div>
+            <div class="stock-summary-item">
+              <span>指数基金补足</span>
+              <strong id="stockFundAmount">¥—</strong>
+              <small>占权益 77.74%</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="stock-table-wrap" id="stockTableWrap">
+          <table class="stock-table">
+            <caption class="sr-only">按沪深300前十大成分股官方权重拆分的参考持仓</caption>
+            <thead>
+              <tr>
+                <th scope="col">股票</th>
+                <th scope="col" class="stock-sector-col">行业</th>
+                <th scope="col">指数权重</th>
+                <th scope="col">本次投入</th>
+              </tr>
+            </thead>
+            <tbody id="stockTableBody"></tbody>
+          </table>
+        </div>
+        <p class="stock-empty" id="stockEmpty" hidden>当前沪深300仓位为 0，未生成个股配置。将目标收益设为高于无风险利率，并保留正的风险溢价，即可得到个股拆分金额。</p>
+
+        <div class="stock-foot">
+          <span>权重来源：<a href="https://www.csindex.com.cn/#/indices/family/detail?indexCode=000300" target="_blank" rel="noopener noreferrer">中证指数有限公司 · 沪深300</a> · 权重快照 <span id="stockAsOf">2026-11-13</span> · 前十大合计 <span id="stockTop10Sum">22.26%</span></span>
+          <span>金额 = 总资金 × 沪深300仓位 × 成分股权重；不含佣金、税费和跟踪误差。</span>
+        </div>
+        <p class="stock-caveat"><strong>风险提示：</strong>只买前十大个股会降低分散度，剩余 290 只成分股建议通过沪深300指数基金或 ETF 覆盖，才能保持对指数的完整暴露。金额较小时，A股按 100 股整数手交易可能造成较大偏差，指数基金通常更适合小额资金。成分股权重为静态快照，不随页面行情自动刷新；本表不构成个股推荐。</p>
+      </div>
+
+    </section>
+
+    <section class="section" id="model" aria-labelledby="modelTitle">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">03 / CML 图示模块</div>
+          <h2 class="section-title" id="modelTitle">资本市场线（CML）</h2>
+        </div>
+        <p class="section-desc">横轴为组合年化波动率，纵轴为预期年化收益。CML 从无风险利率出发并经过市场组合 M，其斜率为市场组合的夏普比率。</p>
+      </div>
+
+      <div class="model-grid">
+        <div class="panel chart-panel">
+          <div class="chart-head">
+            <div>
+              <span class="panel-label">Risk / return plane</span>
+              <h3>风险—收益平面</h3>
+            </div>
+            <button class="text-btn" id="cmlTableBtn" type="button" aria-expanded="false" aria-controls="cmlTableWrap">
+              数据表
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+          </div>
+          <div class="chart-legend" aria-label="图例">
+            <span class="legend-item"><span class="legend-line" aria-hidden="true"></span>CML / CAL</span>
+            <span class="legend-item"><span class="legend-dot rf" aria-hidden="true"></span>无风险资产</span>
+            <span class="legend-item"><span class="legend-dot mkt" aria-hidden="true"></span>市场组合 M</span>
+            <span class="legend-item"><span class="legend-dot you" aria-hidden="true"></span>推荐组合</span>
+          </div>
+          <div class="chart-box">
+            <svg class="chart-svg" id="cmlChart" tabindex="0" role="img" aria-label="资本市场线图，显示无风险资产、沪深300市场组合与推荐组合"></svg>
+            <div class="chart-tooltip" id="cmlTooltip" hidden></div>
+          </div>
+          <p class="chart-caption">实线：可借出区间（0–100% 沪深300）。虚线：理论融资区间；本工具固定不使用杠杆，因此推荐组合不会位于虚线部分。</p>
+          <div class="table-view" id="cmlTableWrap" hidden>
+            <table class="data-table">
+              <thead><tr><th>组合</th><th>沪深300权重</th><th>预期收益</th><th>年化波动</th></tr></thead>
+              <tbody id="cmlTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <aside class="panel model-side" aria-labelledby="formulaTitle">
+          <span class="panel-label">Formula &amp; parameters</span>
+          <h3 id="formulaTitle">CML / CAL 公式与参数</h3>
+          <div class="formula" aria-label="资本市场线公式">
+            <var>E(R<sub>p</sub>)</var><span>=</span><var>R<sub>f</sub></var><span>+</span>
+            <span class="frac"><span><var>E(R<sub>m</sub>)</var> − <var>R<sub>f</sub></var></span><span><var>σ<sub>m</sub></var></span></span>
+            <var>σ<sub>p</sub></var>
+          </div>
+          <p class="model-copy" id="cmlInterpretation">当前市场组合的夏普比率为 0.31：每多承担 1 个百分点的年化波动，模型预期多获得约 0.31 个百分点的年化收益。</p>
+          <div class="model-ledger">
+            <div class="ledger-row"><span>无风险利率 Rf</span><strong id="cmlRf">1.61%</strong></div>
+            <div class="ledger-row"><span>市场预期收益 E(Rm)</span><strong id="cmlMu">7.47%</strong></div>
+            <div class="ledger-row"><span>市场年化波动 σm</span><strong id="cmlSigma">19.02%</strong></div>
+            <div class="ledger-row"><span>CML 斜率 / 市场夏普</span><strong id="cmlSlope">0.31</strong></div>
+            <div class="ledger-row"><span>风险厌恶系数 A</span><strong id="cmlA">2.6</strong></div>
+          </div>
+          <div class="cal-note">
+            <div class="cal-note-card">
+              <strong>CAL 与 CML 的关系</strong>
+              <p>CAL 是任意风险组合与无风险资产的连线；当风险组合取市场组合 M 时，CAL 就是 CML。本页只有沪深300这一项风险资产，所以两者重合。</p>
+            </div>
+            <a class="text-link" href="#method">查看完整计算方法 →</a>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section class="section" id="marketChartSection" aria-labelledby="marketChartTitle">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">04 / 行情展示模块</div>
+          <h2 class="section-title" id="marketChartTitle">沪深300行情走势</h2>
+        </div>
+        <p class="section-desc">沪深300是A股核心资产的代表性指数，在本模型中作为市场组合 M 的代理。图表展示指数收盘点位及各时间区间的表现。</p>
+      </div>
+
+      <div class="market-toolbar">
+        <div class="period-switch" role="group" aria-label="选择沪深300走势时间范围">
+          <button class="period-btn" type="button" data-period="1y" aria-pressed="false">近1年</button>
+          <button class="period-btn" type="button" data-period="3y" aria-pressed="true">近3年</button>
+          <button class="period-btn" type="button" data-period="5y" aria-pressed="false">近5年</button>
+          <button class="period-btn" type="button" data-period="all" aria-pressed="false">全部</button>
+        </div>
+        <span class="market-toolbar-note">指数点位，不含分红 · 点击区间切换</span>
+      </div>
+
+      <div class="panel chart-panel market-chart-panel">
+        <div class="chart-head">
+          <div>
+            <span class="panel-label">CSI 300 index</span>
+            <h3>沪深300 · 收盘走势</h3>
+          </div>
+          <div class="chart-head-right">
+            <div class="chart-stat"><span>区间涨跌</span><strong id="rangeReturn">—</strong></div>
+            <div class="chart-stat"><span>区间年化波动</span><strong id="rangeVol">—</strong></div>
+            <button class="text-btn" id="marketTableBtn" type="button" aria-expanded="false" aria-controls="marketTableWrap">
+              数据表
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="chart-box market-chart-box">
+          <svg class="chart-svg" id="marketChart" tabindex="0" role="img" aria-label="沪深300收盘点位走势图"></svg>
+          <div class="chart-tooltip" id="marketTooltip" hidden></div>
+        </div>
+        <div class="market-data-note">
+          <span class="source"><span class="status-dot live" id="marketChartDot" aria-hidden="true"></span>数据源：腾讯财经 · 前复权日线 · 实际交易日</span>
+          <span id="marketRangeText">区间加载中</span>
+        </div>
+        <div class="table-view" id="marketTableWrap" hidden>
+          <table class="data-table">
+            <thead><tr><th>月份</th><th>月末 / 最新</th><th>较上月</th></tr></thead>
+            <tbody id="marketTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="method" aria-labelledby="methodTitle">
+      <div class="section-head">
+        <div>
+          <div class="section-kicker">05 / 模型说明模块</div>
+          <h2 class="section-title" id="methodTitle">模型与数据说明</h2>
+        </div>
+        <p class="section-desc">列出市场收益与波动率的估计方法、目标与风险约束公式，以及行情、利率和股息率的数据来源。</p>
+      </div>
+
+      <div class="method-grid">
+        <article class="method-card">
+          <div class="method-index">01 / MARKET</div>
+          <h3>市场组合与历史样本</h3>
+          <p>沪深300指数代表市场组合 M。历史价格收益按日计算，年化均值 × 252；波动率使用日收益样本标准差 × √252。指数不含分红，因此预期收益另加当前股息率参考值。</p>
+          <span class="small-note">样本窗口可在“模型假设”中切换。</span>
+        </article>
+        <article class="method-card">
+          <div class="method-index">02 / TARGET</div>
+          <h3>目标收益约束</h3>
+          <p>无杠杆条件下：<code>y目标 = (目标收益 − Rf) / (E(Rm) − Rf)</code>。它表示为了达到目标，至少需要多少比例的市场组合仓位。目标不高于 Rf 时，无需承担市场风险。</p>
+          <span class="small-note">y目标 超过 100% 即代表目标无法仅靠现货实现。</span>
+        </article>
+        <article class="method-card">
+          <div class="method-index">03 / RISK</div>
+          <h3>风险偏好约束</h3>
+          <p>使用均值—方差效用最大化：<code>y风险 = (E(Rm) − Rf) / (A × σm²)</code>。A 是风险厌恶系数，由 1–10 的风险偏好档位映射。A 越高，愿意承担的单位风险越少。</p>
+          <span class="small-note">最终仓位 y = min(y目标, y风险)，并限制在 0–100%。</span>
+        </article>
+        <article class="method-card">
+          <div class="method-index">04 / DATA</div>
+          <h3>实时数据与缓存</h3>
+          <p>沪深300行情来自腾讯财经接口，无风险利率来自东方财富中国国债收益率数据。页面每 30 秒尝试更新行情，每 5 分钟更新国债收益率；网络不可用时保留最近一次快照。</p>
+          <span class="small-note">数据日期与“缓存/实时”状态会直接标注在页面上。</span>
+        </article>
+      </div>
+
+      <div class="source-row">
+        <span>数据源：<span class="source-links">
+          <a href="https://gu.qq.com/sh000300/gp" target="_blank" rel="noopener noreferrer">腾讯财经 · 沪深300</a>
+          <a href="https://data.eastmoney.com/cjsj/zmgzsyl.html" target="_blank" rel="noopener noreferrer">东方财富 · 中美国债收益率</a>
+          <a href="https://danjuanfunds.com/valuation" target="_blank" rel="noopener noreferrer">蛋卷基金 · 股息率参考</a>
+          <a href="https://www.csindex.com.cn/#/indices/family/detail?indexCode=000300" target="_blank" rel="noopener noreferrer">中证指数 · 沪深300成分股权重</a>
+        </span></span>
+        <span id="lastRefresh">最近同步：—</span>
+      </div>
+      <p class="disclaimer">风险提示：本页面用于投资学课程演示与模型实验，不构成任何投资建议、要约或收益承诺。历史收益不代表未来表现，指数不能直接投资，实际基金存在跟踪误差、申赎费用与税费。个股拆分按公开成分股权重静态计算，不构成个股推荐；VaR 与情景价值均为基于历史波动和正态分布假设的简化估计，实际结果可能显著偏离。投资前请结合自身财务状况并咨询持牌专业人士。</p>
+    </section>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="shell footer-inner">
+    <div>
+      <span class="footer-mark">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 18.5L9 13l3 2.2L20 5.5" stroke="var(--series-1)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20" cy="5.5" r="2" fill="var(--series-2)"/></svg>
+        配置线 · 资本市场线资产配置工具
+      </span>
+    </div>
+    <div class="footer-meta">
+      <span>Markowitz mean–variance / one risky asset + risk-free asset</span>
+      <span>仅供学习与研究 · 不构成投资建议</span>
+    </div>
+  </div>
+</footer>
+
+<script type="application/json" id="fallbackHistory">[["2018-11-16",3257.67],["2018-11-23",3143.48],["2018-11-30",3172.69],["2018-12-07",3181.56],["2018-12-14",3165.91],["2018-12-21",3029.4],["2018-12-28",3010.65],["2019-01-08",3047.7],["2019-01-15",3127.99],["2019-01-22",3143.32],["2019-01-29",3193.97],["2019-02-12",3330.34],["2019-02-19",3439.61],["2019-02-26",3684.69],["2019-03-05",3816.01],["2019-03-12",3755.35],["2019-03-19",3833.96],["2019-03-26",3700.44],["2019-04-02",3971.29],["2019-04-10",4085.85],["2019-04-17",4087.24],["2019-04-24",4030.09],["2019-05-06",3684.62],["2019-05-13",3668.73],["2019-05-20",3617.79],["2019-05-27",3637.2],["2019-06-03",3632.01],["2019-06-11",3719.28],["2019-06-18",3667.62],["2019-06-25",3801.31],["2019-07-02",3937.17],["2019-07-09",3793.13],["2019-07-16",3806.84],["2019-07-23",3789.91],["2019-07-30",3870.32],["2019-08-06",3636.33],["2019-08-13",3665.75],["2019-08-20",3787.73],["2019-08-27",3816.95],["2019-09-03",3853.61],["2019-09-10",3959.26],["2019-09-18",3910.08],["2019-09-25",3870.98],["2019-10-09",3843.24],["2019-10-16",3922.69],["2019-10-23",3871.08],["2019-10-30",3891.23],["2019-11-06",3984.88],["2019-11-13",3899.98],["2019-11-20",3907.86],["2019-11-27",3875.62],["2019-12-04",3849.82],["2019-12-11",3902.75],["2019-12-18",4032.78],["2019-12-25",3990.87],["2020-01-02",4152.24],["2020-01-09",4164.37],["2020-01-16",4149.04],["2020-01-23",4003.9],["2020-02-07",3899.87],["2020-02-14",3987.73],["2020-02-21",4149.49],["2020-02-28",3940.05],["2020-03-06",4138.51],["2020-03-13",3895.31],["2020-03-20",3653.22],["2020-03-27",3710.06],["2020-04-03",3713.22],["2020-04-13",3753.26],["2020-04-20",3853.46],["2020-04-27",3822.77],["2020-05-07",3924.89],["2020-05-14",3925.22],["2020-05-21",3913.79],["2020-05-28",3856.63],["2020-06-04",3982.19],["2020-06-11",3995.88],["2020-06-18",4044.38],["2020-06-29",4109.72],["2020-07-06",4670.09],["2020-07-13",4852.96],["2020-07-20",4680.3],["2020-07-27",4528.45],["2020-08-03",4771.31],["2020-08-10",4724.87],["2020-08-17",4815.23],["2020-08-24",4755.85],["2020-08-31",4816.22],["2020-09-07",4669.37],["2020-09-14",4651.05],["2020-09-21",4691.43],["2020-09-28",4581.91],["2020-10-13",4839.2],["2020-10-20",4793.47],["2020-10-27",4699.28],["2020-11-03",4777.56],["2020-11-10",4953.88],["2020-11-17",4894.79],["2020-11-24",4974.29],["2020-12-01",5067.1],["2020-12-08",5009.88],["2020-12-15",4945.1],["2020-12-22",4964.77],["2020-12-29",5042.94],["2021-01-06",5417.67],["2021-01-13",5577.97],["2021-01-20",5476.43],["2021-01-27",5528.0],["2021-02-03",5485.2],["2021-02-10",5807.72],["2021-02-24",5437.57],["2021-03-03",5452.21],["2021-03-10",5003.61],["2021-03-17",5100.86],["2021-03-24",4928.69],["2021-03-31",5048.36],["2021-04-08",5112.21],["2021-04-15",4948.97],["2021-04-22",5089.24],["2021-04-29",5164.17],["2021-05-11",5023.06],["2021-05-18",5187.6],["2021-05-25",5318.48],["2021-06-01",5341.68],["2021-06-08",5232.12],["2021-06-16",5080.49],["2021-06-23",5147.39],["2021-06-30",5224.04],["2021-07-07",5140.49],["2021-07-14",5083.08],["2021-07-21",5144.04],["2021-07-28",4760.48],["2021-08-04",4978.85],["2021-08-11",5015.34],["2021-08-18",4894.24],["2021-08-25",4898.16],["2021-09-01",4869.46],["2021-09-08",4972.13],["2021-09-15",4867.32],["2021-09-24",4849.43],["2021-10-08",4929.94],["2021-10-15",4932.11],["2021-10-22",4959.73],["2021-10-29",4908.77],["2021-11-05",4842.35],["2021-11-12",4888.37],["2021-11-19",4890.06],["2021-11-26",4860.13],["2021-12-03",4901.02],["2021-12-10",5055.12],["2021-12-17",4954.76],["2021-12-24",4921.34],["2021-12-31",4940.37],["2022-01-10",4844.05],["2022-01-17",4767.28],["2022-01-24",4786.74],["2022-02-07",4634.09],["2022-02-14",4551.69],["2022-02-21",4634.31],["2022-02-28",4581.65],["2022-03-07",4352.78],["2022-03-14",4174.76],["2022-03-21",4258.75],["2022-03-28",4148.47],["2022-04-06",4263.84],["2022-04-13",4139.74],["2022-04-20",4070.79],["2022-04-27",3895.54],["2022-05-09",3877.44],["2022-05-16",3956.54],["2022-05-23",4053.98],["2022-05-30",4029.02],["2022-06-07",4179.13],["2022-06-14",4222.31],["2022-06-21",4325.57],["2022-06-28",4490.52],["2022-07-05",4489.54],["2022-07-12",4313.62],["2022-07-19",4269.34],["2022-07-26",4245.98],["2022-08-02",4107.02],["2022-08-09",4156.29],["2022-08-16",4177.84],["2022-08-23",4161.08],["2022-08-30",4075.79],["2022-09-06",4052.28],["2022-09-14",4065.36],["2022-09-21",3903.73],["2022-09-28",3828.71],["2022-10-12",3784.31],["2022-10-19",3776.53],["2022-10-26",3656.9],["2022-11-02",3677.81],["2022-11-09",3714.27],["2022-11-16",3834.39],["2022-11-23",3773.53],["2022-11-30",3853.04],["2022-12-07",3958.44],["2022-12-14",3954.89],["2022-12-21",3830.54],["2022-12-28",3871.26],["2023-01-05",3968.58],["2023-01-12",4017.87],["2023-01-19",4156.01],["2023-02-02",4181.15],["2023-02-09",4130.86],["2023-02-16",4093.49],["2023-02-23",4103.65],["2023-03-02",4117.74],["2023-03-09",4019.85],["2023-03-16",3939.15],["2023-03-23",4039.09],["2023-03-30",4038.53],["2023-04-07",4123.28],["2023-04-14",4092.0],["2023-04-21",4032.57],["2023-04-28",4029.09],["2023-05-10",3996.87],["2023-05-17",3960.17],["2023-05-24",3859.09],["2023-05-31",3798.54],["2023-06-07",3789.34],["2023-06-14",3864.02],["2023-06-21",3864.03],["2023-06-30",3842.45],["2023-07-07",3825.7],["2023-07-14",3899.1],["2023-07-21",3821.91],["2023-07-28",3992.74],["2023-08-04",4020.58],["2023-08-11",3884.25],["2023-08-18",3784.0],["2023-08-25",3709.15],["2023-09-01",3791.49],["2023-09-08",3739.99],["2023-09-15",3708.78],["2023-09-22",3738.93],["2023-10-09",3684.73],["2023-10-16",3626.6],["2023-10-23",3474.24],["2023-10-30",3583.77],["2023-11-06",3632.61],["2023-11-13",3579.41],["2023-11-20",3576.32],["2023-11-27",3511.94],["2023-12-04",3460.14],["2023-12-11",3419.45],["2023-12-18",3329.37],["2023-12-25",3347.45],["2024-01-02",3386.35],["2024-01-09",3292.5],["2024-01-16",3300.88],["2024-01-23",3231.93],["2024-01-30",3245.04],["2024-02-06",3311.69],["2024-02-21",3456.87],["2024-02-28",3450.26],["2024-03-06",3551.05],["2024-03-13",3572.36],["2024-03-20",3585.38],["2024-03-27",3502.79],["2024-04-03",3567.8],["2024-04-12",3475.84],["2024-04-19",3541.66],["2024-04-26",3584.27],["2024-05-08",3630.22],["2024-05-15",3626.06],["2024-05-22",3684.45],["2024-05-29",3613.52],["2024-06-05",3594.79],["2024-06-13",3526.13],["2024-06-20",3503.28],["2024-06-27",3454.12],["2024-07-04",3445.81],["2024-07-11",3468.17],["2024-07-18",3520.93],["2024-07-25",3399.27],["2024-08-01",3419.27],["2024-08-08",3342.94],["2024-08-15",3341.95],["2024-08-22",3313.14],["2024-08-29",3277.68],["2024-09-05",3257.76],["2024-09-12",3172.47],["2024-09-23",3212.76],["2024-09-30",4017.85],["2024-10-14",3961.34],["2024-10-21",3935.2],["2024-10-28",3964.16],["2024-11-04",3944.76],["2024-11-11",4131.13],["2024-11-18",3950.38],["2024-11-25",3848.09],["2024-12-02",3947.63],["2024-12-09",3966.57],["2024-12-16",3911.84],["2024-12-23",3933.57],["2024-12-30",3999.05],["2025-01-07",3796.11],["2025-01-14",3820.54],["2025-01-21",3832.61],["2025-02-05",3795.08],["2025-02-12",3919.86],["2025-02-19",3940.16],["2025-02-26",3959.94],["2025-03-05",3902.57],["2025-03-12",3927.23],["2025-03-19",4010.17],["2025-03-26",3919.36],["2025-04-02",3884.39],["2025-04-10",3735.12],["2025-04-17",3772.22],["2025-04-24",3784.36],["2025-05-06",3808.54],["2025-05-13",3896.26],["2025-05-20",3898.17],["2025-05-27",3839.4],["2025-06-04",3868.74],["2025-06-11",3894.63],["2025-06-18",3874.97],["2025-06-25",3960.07],["2025-07-02",3943.68],["2025-07-09",3991.4],["2025-07-16",4007.2],["2025-07-23",4119.77],["2025-07-30",4151.24],["2025-08-06",4113.49],["2025-08-13",4176.58],["2025-08-20",4271.4],["2025-08-27",4386.13],["2025-09-03",4459.83],["2025-09-10",4445.36],["2025-09-17",4551.02],["2025-09-24",4566.07],["2025-10-09",4709.48],["2025-10-16",4618.42],["2025-10-23",4606.34],["2025-10-30",4709.91],["2025-11-06",4693.4],["2025-11-13",4702.07],["2025-11-20",4564.95],["2025-11-27",4515.4],["2025-12-04",4546.57],["2025-12-11",4552.18],["2025-12-18",4552.79],["2025-12-25",4642.54],["2026-01-05",4717.75],["2026-01-12",4789.92],["2026-01-19",4734.46],["2026-01-26",4706.96],["2026-02-02",4605.98],["2026-02-09",4719.06],["2026-02-24",4707.54],["2026-03-03",4655.9],["2026-03-10",4674.76],["2026-03-17",4637.44],["2026-03-24",4474.72],["2026-03-31",4450.05],["2026-04-08",4595.56],["2026-04-15",4685.25],["2026-04-22",4799.63],["2026-04-29",4810.35],["2026-05-11",4951.84],["2026-05-18",4833.52],["2026-05-25",4921.6],["2026-06-01",4844.26],["2026-06-08",4713.64],["2026-06-15",4891.71],["2026-06-23",4919.39],["2026-06-30",4979.43],["2026-07-07",4792.26],["2026-07-14",4796.5],["2026-07-21",4739.23],["2026-07-28",4569.52],["2026-08-04",4600.93],["2026-08-11",4663.79],["2026-08-18",4725.81],["2026-08-25",4552.03],["2026-09-01",4611.44],["2026-09-08",4558.74],["2026-09-15",4450.04],["2026-09-22",4544.59],["2026-09-30",4357.62],["2026-10-14",4217.68],["2026-10-21",4111.93],["2026-10-28",4083.87],["2026-11-04",4101.34],["2026-11-11",4075.71],["2026-11-16",3993.76]]</script>
+<script type="application/json" id="fallbackYields">{"2Y":[{"date":"2026-11-13","value":1.2319},{"date":"2026-11-12","value":1.2261},{"date":"2026-11-11","value":1.2236},{"date":"2026-11-10","value":1.2206},{"date":"2026-11-09","value":1.2157},{"date":"2026-11-06","value":1.2155},{"date":"2026-11-05","value":1.2214},{"date":"2026-11-04","value":1.2157},{"date":"2026-11-03","value":1.2274},{"date":"2026-11-02","value":1.2367},{"date":"2026-10-30","value":1.2457},{"date":"2026-10-29","value":1.2218},{"date":"2026-10-28","value":1.233},{"date":"2026-10-27","value":1.2403},{"date":"2026-10-26","value":1.2428},{"date":"2026-10-23","value":1.2452},{"date":"2026-10-22","value":1.246},{"date":"2026-10-21","value":1.2497},{"date":"2026-10-20","value":1.243},{"date":"2026-10-19","value":1.2522},{"date":"2026-10-16","value":1.2547},{"date":"2026-10-15","value":1.2579},{"date":"2026-10-14","value":1.2595},{"date":"2026-10-13","value":1.2607},{"date":"2026-10-12","value":1.2631},{"date":"2026-10-10","value":1.2676},{"date":"2026-10-09","value":1.2719},{"date":"2026-10-08","value":1.2705},{"date":"2026-09-30","value":1.2665},{"date":"2026-09-29","value":1.259},{"date":"2026-09-28","value":1.2716},{"date":"2026-09-24","value":1.2709},{"date":"2026-09-23","value":1.2682},{"date":"2026-09-22","value":1.2656},{"date":"2026-09-21","value":1.2629},{"date":"2026-09-20","value":1.2538},{"date":"2026-09-18","value":1.2557},{"date":"2026-09-17","value":1.255},{"date":"2026-09-16","value":1.2439},{"date":"2026-09-15","value":1.2439}],"5Y":[{"date":"2026-11-13","value":1.3307},{"date":"2026-11-12","value":1.329},{"date":"2026-11-11","value":1.3287},{"date":"2026-11-10","value":1.3097},{"date":"2026-11-09","value":1.3053},{"date":"2026-11-06","value":1.3115},{"date":"2026-11-05","value":1.3236},{"date":"2026-11-04","value":1.3255},{"date":"2026-11-03","value":1.3307},{"date":"2026-11-02","value":1.3477},{"date":"2026-10-30","value":1.3532},{"date":"2026-10-29","value":1.3297},{"date":"2026-10-28","value":1.3407},{"date":"2026-10-27","value":1.3487},{"date":"2026-10-26","value":1.3532},{"date":"2026-10-23","value":1.3532},{"date":"2026-10-22","value":1.3532},{"date":"2026-10-21","value":1.3557},{"date":"2026-10-20","value":1.3476},{"date":"2026-10-19","value":1.377},{"date":"2026-10-16","value":1.3815},{"date":"2026-10-15","value":1.39},{"date":"2026-10-14","value":1.3896},{"date":"2026-10-13","value":1.3974},{"date":"2026-10-12","value":1.4024},{"date":"2026-10-10","value":1.4069},{"date":"2026-10-09","value":1.4089},{"date":"2026-10-08","value":1.4128},{"date":"2026-09-30","value":1.409},{"date":"2026-09-29","value":1.3948},{"date":"2026-09-28","value":1.4102},{"date":"2026-09-24","value":1.4058},{"date":"2026-09-23","value":1.4073},{"date":"2026-09-22","value":1.4053},{"date":"2026-09-21","value":1.4072},{"date":"2026-09-20","value":1.4055},{"date":"2026-09-18","value":1.407},{"date":"2026-09-17","value":1.4106},{"date":"2026-09-16","value":1.4103},{"date":"2026-09-15","value":1.4165}],"10Y":[{"date":"2026-11-13","value":1.6123},{"date":"2026-11-12","value":1.6032},{"date":"2026-11-11","value":1.6039},{"date":"2026-11-10","value":1.5965},{"date":"2026-11-09","value":1.5874},{"date":"2026-11-06","value":1.5868},{"date":"2026-11-05","value":1.6038},{"date":"2026-11-04","value":1.6077},{"date":"2026-11-03","value":1.621},{"date":"2026-11-02","value":1.6343},{"date":"2026-10-30","value":1.65},{"date":"2026-10-29","value":1.6233},{"date":"2026-10-28","value":1.6345},{"date":"2026-10-27","value":1.6258},{"date":"2026-10-26","value":1.6376},{"date":"2026-10-23","value":1.64},{"date":"2026-10-22","value":1.6414},{"date":"2026-10-21","value":1.6412},{"date":"2026-10-20","value":1.6354},{"date":"2026-10-19","value":1.6497},{"date":"2026-10-16","value":1.648},{"date":"2026-10-15","value":1.6601},{"date":"2026-10-14","value":1.6516},{"date":"2026-10-13","value":1.6654},{"date":"2026-10-12","value":1.6722},{"date":"2026-10-10","value":1.6849},{"date":"2026-10-09","value":1.6864},{"date":"2026-10-08","value":1.6899},{"date":"2026-09-30","value":1.6822},{"date":"2026-09-29","value":1.667},{"date":"2026-09-28","value":1.679},{"date":"2026-09-24","value":1.6738},{"date":"2026-09-23","value":1.6807},{"date":"2026-09-22","value":1.6791},{"date":"2026-09-21","value":1.6829},{"date":"2026-09-20","value":1.6818},{"date":"2026-09-18","value":1.682},{"date":"2026-09-17","value":1.6862},{"date":"2026-09-16","value":1.6858},{"date":"2026-09-15","value":1.6865}],"30Y":[{"date":"2026-11-13","value":2.0595},{"date":"2026-11-12","value":2.054},{"date":"2026-11-11","value":2.052},{"date":"2026-11-10","value":2.0363},{"date":"2026-11-09","value":2.028},{"date":"2026-11-06","value":2.0275},{"date":"2026-11-05","value":2.0425},{"date":"2026-11-04","value":2.0415},{"date":"2026-11-03","value":2.0508},{"date":"2026-11-02","value":2.066},{"date":"2026-10-30","value":2.0826},{"date":"2026-10-29","value":2.0467},{"date":"2026-10-28","value":2.0489},{"date":"2026-10-27","value":2.0406},{"date":"2026-10-26","value":2.0622},{"date":"2026-10-23","value":2.0675},{"date":"2026-10-22","value":2.064},{"date":"2026-10-21","value":2.063},{"date":"2026-10-20","value":2.051},{"date":"2026-10-19","value":2.061},{"date":"2026-10-16","value":2.06},{"date":"2026-10-15","value":2.07},{"date":"2026-10-14","value":2.06},{"date":"2026-10-13","value":2.069},{"date":"2026-10-12","value":2.067},{"date":"2026-10-10","value":2.087},{"date":"2026-10-09","value":2.0915},{"date":"2026-10-08","value":2.106},{"date":"2026-09-30","value":2.1},{"date":"2026-09-29","value":2.0735},{"date":"2026-09-28","value":2.097},{"date":"2026-09-24","value":2.082},{"date":"2026-09-23","value":2.11},{"date":"2026-09-22","value":2.111},{"date":"2026-09-21","value":2.1185},{"date":"2026-09-20","value":2.121},{"date":"2026-09-18","value":2.126},{"date":"2026-09-17","value":2.1395},{"date":"2026-09-16","value":2.1375},{"date":"2026-09-15","value":2.14}]}</script>
+<script type="application/json" id="fallbackConstituents">{"asOf":"2026-11-13","top10Sum":22.2649,"stocks":[{"code":"600519","name":"贵州茅台","exchange":"SH","sector":"主要消费","weight":3.9248},{"code":"300750","name":"宁德时代","exchange":"SZ","sector":"工业","weight":2.7505},{"code":"601318","name":"中国平安","exchange":"SH","sector":"金融","weight":2.5091},{"code":"600036","name":"招商银行","exchange":"SH","sector":"金融","weight":2.3247},{"code":"300308","name":"中际旭创","exchange":"SZ","sector":"通信服务","weight":2.2746},{"code":"000333","name":"美的集团","exchange":"SZ","sector":"可选消费","weight":1.9263},{"code":"601899","name":"紫金矿业","exchange":"SH","sector":"原材料","weight":1.9022},{"code":"600900","name":"长江电力","exchange":"SH","sector":"公用事业","weight":1.6009},{"code":"603259","name":"药明康德","exchange":"SH","sector":"医药卫生","weight":1.583},{"code":"601166","name":"兴业银行","exchange":"SH","sector":"金融","weight":1.4688}]}</script>
+<script>
+(() => {
+"use strict";
+
+/* --------------------------------------------------------------------------
+   Constants and state
+-------------------------------------------------------------------------- */
+const SVG_NS = "http://www.w3.org/2000/svg";
+const TENORS = {
+  "2Y": { label: "2年期", field: "EMM00588704" },
+  "5Y": { label: "5年期", field: "EMM00166462" },
+  "10Y": { label: "10年期", field: "EMM00166466" },
+  "30Y": { label: "30年期", field: "EMM00166469" }
+};
+const TENOR_KEYS = Object.keys(TENORS);
+const WINDOW_LABELS = { "3y": "近3年", "5y": "近5年", "all": "近8年" };
+const RISK_LEVELS = [
+  { label: "极保守", A: 10.0, desc: "本金安全优先，很难接受短期净值波动。" },
+  { label: "保守", A: 8.0, desc: "以控制波动为主，只接受很小的权益暴露。" },
+  { label: "稳健", A: 6.5, desc: "偏好稳健，愿意承担温和的阶段性波动。" },
+  { label: "稳中求进", A: 5.2, desc: "以稳健为底，适度参与市场增长。" },
+  { label: "平衡", A: 4.2, desc: "收益与风险并重，接受中等幅度波动。" },
+  { label: "均衡成长", A: 3.3, desc: "在风险预算内追求长期增长。" },
+  { label: "成长", A: 2.6, desc: "追求长期增长，能承受较明显的阶段性波动。" },
+  { label: "进取", A: 2.0, desc: "愿意承受明显回撤，换取更高的长期预期。" },
+  { label: "激进", A: 1.6, desc: "主动承担较高波动，追求长期高回报。" },
+  { label: "极激进", A: 1.25, desc: "对大幅回撤有很高容忍度，几乎以收益为先。" }
+];
+const FALLBACK_STATS = {
+  "3y": { muPrice: 0.042502, vol: 0.181321, start: "2023-09-26", end: "2026-11-16" },
+  "5y": { muPrice: -0.021574, vol: 0.177626, start: "2021-08-30", end: "2026-11-16" },
+  "all": { muPrice: 0.044587, vol: 0.190200, start: "2018-11-16", end: "2026-11-16" }
+};
+const FALLBACK_QUOTE = {
+  price: 3993.76, prevClose: 4016.29, change: -22.53, pct: -0.0056,
+  open: 3984.77, high: 3997.40, low: 3967.63,
+  date: "2026-11-16", time: "12:00", rawTime: "20261116120000"
+};
+const FALLBACK_52W = { high: 5059.66, low: 3985.50 };
+const DIVIDEND_DATE = "11-13";
+const STATUS_ICONS = {
+  good: '<path d="m5 12 4.2 4.2L19 6.5"/>',
+  warn: '<path d="M12 3.5 2.8 20h18.4L12 3.5Z"/><path d="M12 9v5"/><path d="M12 17.4h.01"/>',
+  critical: '<circle cx="12" cy="12" r="8.5"/><path d="m9 9 6 6"/><path d="m15 9-6 6"/>'
+};
+const PERIOD_LABELS = { "1y": "近1年", "3y": "近3年", "5y": "近5年", "all": "全部" };
+
+const state = {
+  market: {
+    history: [],
+    liveHistory: false,
+    quoteLive: false,
+    quote: { ...FALLBACK_QUOTE },
+    historyFetchedAt: 0,
+    quoteFetchedAt: 0
+  },
+  yields: {
+    data: null,
+    live: false,
+    fetchedAt: 0
+  },
+  constituents: null,
+  tenor: "10Y",
+  riskScore: 7,
+  target: 0.05,
+  capital: 1000000,
+  windowKey: "all",
+  dividend: 0.0301,
+  autoMu: true,
+  autoVol: true,
+  muOverride: null,
+  volOverride: null,
+  period: "3y",
+  refreshing: false,
+  lastAttemptAt: 0
+};
+
+let analysis = null;
+let renderFrame = 0;
+let quoteLoading = false;
+let yieldsLoading = false;
+let historyLoading = false;
+let marketHoverIndex = null;
+
+const dom = {};
+
+/* --------------------------------------------------------------------------
+   Small helpers
+-------------------------------------------------------------------------- */
+const $ = (selector, root = document) => root.querySelector(selector);
+const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+const isNumber = (value) => typeof value === "number" && Number.isFinite(value);
+const moneyFmt = new Intl.NumberFormat("zh-CN", { maximumFractionDigits: 0 });
+const priceFmt = new Intl.NumberFormat("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+function formatMoney(value, signed = false) {
+  if (!isNumber(value)) return "—";
+  const abs = moneyFmt.format(Math.abs(value));
+  if (!signed) return `¥${abs}`;
+  if (value > 0) return `+¥${abs}`;
+  if (value < 0) return `−¥${abs}`;
+  return `¥0`;
+}
+function formatNum(value, digits = 2, signed = false) {
+  if (!isNumber(value)) return "—";
+  const text = value.toLocaleString("zh-CN", { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  if (!signed) return text;
+  if (value > 0) return `+${text}`;
+  if (value < 0) return `−${text.replace("-", "")}`;
+  return text;
+}
+function formatPct(value, digits = 2, signed = false) {
+  if (!isNumber(value)) return "—";
+  const points = value * 100;
+  const text = Math.abs(points).toFixed(digits);
+  if (!signed) return `${points < 0 ? "−" : ""}${text}%`;
+  if (points > 0) return `+${text}%`;
+  if (points < 0) return `−${text}%`;
+  return `${text}%`;
+}
+function formatWeight(value) {
+  return isNumber(value) ? (value * 100).toFixed(1) : "—";
+}
+function formatSlope(value) {
+  return isNumber(value) ? value.toFixed(2) : "—";
+}
+function formatMD(iso) {
+  if (!iso) return "—";
+  const [, m, d] = iso.split("-");
+  return `${m}-${d}`;
+}
+function formatYM(iso) {
+  return iso ? iso.slice(0, 7) : "—";
+}
+function dateToMs(iso) {
+  return new Date(`${iso}T00:00:00+08:00`).getTime();
+}
+function pad2(value) {
+  return String(value).padStart(2, "0");
+}
+function setText(node, text) {
+  if (node) node.textContent = text;
+}
+function setHidden(node, hidden) {
+  if (node) node.hidden = hidden;
+}
+function makeEl(tag, className, text) {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text !== undefined) node.textContent = text;
+  return node;
+}
+function clearNode(node) {
+  while (node && node.firstChild) node.removeChild(node.firstChild);
+}
+function svgNode(tag, attrs = {}) {
+  const node = document.createElementNS(SVG_NS, tag);
+  Object.entries(attrs).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) node.setAttribute(key, String(value));
+  });
+  return node;
+}
+function svgText(parent, x, y, text, attrs = {}) {
+  const el = svgNode("text", { x, y, "font-size": 10.5, fill: "var(--ink-3)", ...attrs });
+  el.textContent = text;
+  parent.appendChild(el);
+  return el;
+}
+function setRangeFill(el, pct) {
+  if (!el) return;
+  el.style.setProperty("--fill", `${clamp(pct, 0, 100)}%`);
+}
+function setDotKind(el, kind) {
+  if (!el) return;
+  el.classList.remove("live", "loading");
+  if (kind) el.classList.add(kind);
+}
+function beijingNowParts(date = new Date()) {
+  const fmt = new Intl.DateTimeFormat("zh-CN", {
+    timeZone: "Asia/Shanghai", month: "2-digit", day: "2-digit", weekday: "short",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"
+  });
+  return Object.fromEntries(fmt.formatToParts(date).map((part) => [part.type, part.value]));
+}
+function beijingTimestamp(date = new Date(), withSeconds = false) {
+  const p = beijingNowParts(date);
+  return `${p.month}-${p.day} ${p.weekday} ${p.hour}:${p.minute}${withSeconds ? `:${p.second}` : ""}`;
+}
+function updateClock() {
+  if (dom.headerClock) dom.headerClock.textContent = beijingTimestamp();
+}
+function signedChangeText(value, digits = 2) {
+  if (!isNumber(value)) return "—";
+  if (value > 0) return `+${value.toFixed(digits)}`;
+  if (value < 0) return `−${Math.abs(value).toFixed(digits)}`;
+  return value.toFixed(digits);
+}
+function signedPctText(value, digits = 2) {
+  if (!isNumber(value)) return "—";
+  const pct = value * 100;
+  if (pct > 0) return `+${pct.toFixed(digits)}%`;
+  if (pct < 0) return `−${Math.abs(pct).toFixed(digits)}%`;
+  return `${pct.toFixed(digits)}%`;
+}
+function niceStep(rawStep) {
+  const exponent = Math.floor(Math.log10(Math.max(rawStep, 1e-12)));
+  const fraction = rawStep / Math.pow(10, exponent);
+  let niceFraction;
+  if (fraction <= 1) niceFraction = 1;
+  else if (fraction <= 2) niceFraction = 2;
+  else if (fraction <= 2.5) niceFraction = 2.5;
+  else if (fraction <= 5) niceFraction = 5;
+  else niceFraction = 10;
+  return niceFraction * Math.pow(10, exponent);
+}
+function niceScale(min, max, count = 4) {
+  if (!Number.isFinite(min) || !Number.isFinite(max)) return { min: 0, max: 1, step: 0.25, ticks: [0, 0.25, 0.5, 0.75, 1] };
+  if (max <= min) {
+    const center = (min + max) / 2 || 0;
+    const pad = Math.max(Math.abs(center) * 0.1, 0.01);
+    min = center - pad;
+    max = center + pad;
+  }
+  const step = niceStep((max - min) / Math.max(count, 1));
+  const lo = Math.floor(min / step) * step;
+  const hi = Math.ceil(max / step) * step;
+  const ticks = [];
+  for (let value = lo; value <= hi + step * 0.5; value += step) {
+    ticks.push(Number(value.toFixed(10)));
+  }
+  return { min: lo, max: hi, step, ticks };
+}
+function debounce(fn, wait) {
+  let timer = 0;
+  return (...args) => {
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => fn(...args), wait);
+  };
+}
+
+/* --------------------------------------------------------------------------
+   Boot data
+-------------------------------------------------------------------------- */
+function readFallbackData() {
+  const history = JSON.parse(document.getElementById("fallbackHistory").textContent);
+  const yields = JSON.parse(document.getElementById("fallbackYields").textContent);
+  const constituents = JSON.parse(document.getElementById("fallbackConstituents").textContent);
+  state.market.history = history.map(([date, close]) => ({ date, close: Number(close) }));
+  state.market.quote = { ...FALLBACK_QUOTE };
+  state.constituents = constituents;
+  state.yields.data = {};
+  TENOR_KEYS.forEach((key) => {
+    const records = Array.isArray(yields[key]) ? yields[key] : [];
+    state.yields.data[key] = records
+      .map((row) => ({ date: row.date, value: Number(row.value) }))
+      .filter((row) => row.date && Number.isFinite(row.value));
+  });
+}
+
+/* --------------------------------------------------------------------------
+   DOM references
+-------------------------------------------------------------------------- */
+function cacheDom() {
+  [
+    "dataStatus", "statusDot", "statusText", "refreshBtn", "headerClock",
+    "rfValue", "rfChange", "rfTenorLabel", "rfDate", "rfSpark", "rfLiveLabel",
+    "rate2Y", "rate5Y", "rate10Y", "rate30Y",
+    "marketSourceBadge", "marketSourceText", "marketDot",
+    "mktPrice", "mktPct", "mktChange", "mktTime", "mkt52w",
+    "tileExpected", "tileExpectedNote", "tileVol", "tileSample", "tileSharpe",
+    "capitalInput", "targetRange", "targetNumber", "targetHint",
+    "riskRange", "riskA", "riskLabel", "riskTicks", "riskDesc",
+    "windowSelect", "dividendInput", "muInput", "muAuto", "volInput", "volAuto",
+    "assumptionNote", "resetAssumptions", "calcBtn",
+    "resultPanel", "goalStatus", "goalStatusText", "heroWeight", "resultThesis",
+    "segEquity", "segRf", "legendEquity", "legendRf",
+    "constraintTarget", "meterTarget", "constraintRisk", "meterRisk", "constraintFinal",
+    "metricReturn", "metricReturnSub", "metricVol", "metricSharpe", "metricSharpeSub",
+    "metricVar", "metricVarSub", "insight", "insightText",
+    "scenarioLow", "scenarioBase", "scenarioHigh", "allocTableBody",
+    "cmlChart", "cmlTooltip", "cmlTableBtn", "cmlTableWrap", "cmlTableBody",
+    "cmlInterpretation", "cmlRf", "cmlMu", "cmlSigma", "cmlSlope", "cmlA",
+    "marketChart", "marketTooltip", "marketTableBtn", "marketTableWrap", "marketTableBody",
+    "rangeReturn", "rangeVol", "marketRangeText", "marketChartDot", "lastRefresh", "liveSummary",
+    "stockTableBody", "stockTableWrap", "stockEmpty", "stockEquityAmount", "stockDirectAmount",
+    "stockFundAmount", "stockAsOf", "stockTop10Sum"
+  ].forEach((id) => { dom[id] = document.getElementById(id); });
+  dom.tenorButtons = $$(".tenor-btn");
+  dom.periodButtons = $$(".period-btn");
+  dom.quickButtons = $$(".quick-btn");
+  dom.insightIcon = dom.insight ? $(".icon", dom.insight) : null;
+  dom.goalIcon = dom.goalStatus ? $("svg", dom.goalStatus) : null;
+}
+
+/* --------------------------------------------------------------------------
+   Data access / calculations
+-------------------------------------------------------------------------- */
+function getSelectedYield(tenor = state.tenor) {
+  const records = state.yields.data && state.yields.data[tenor] ? state.yields.data[tenor] : [];
+  const latest = records.find((row) => isNumber(row.value));
+  const previous = records.filter((row) => isNumber(row.value))[1];
+  if (!latest) {
+    return { rate: 0.016123, raw: 1.6123, date: "2026-11-13", bpChange: 0, available: false };
+  }
+  return {
+    rate: latest.value / 100,
+    raw: latest.value,
+    date: latest.date,
+    bpChange: previous ? (latest.value - previous.value) * 100 : 0,
+    available: true
+  };
+}
+
+function getMarketStats() {
+  if (!state.market.liveHistory || state.market.history.length < 300) {
+    const fallback = FALLBACK_STATS[state.windowKey] || FALLBACK_STATS.all;
+    return { ...fallback, isFallback: true };
+  }
+  const history = state.market.history;
+  const requested = state.windowKey === "3y" ? 756 : state.windowKey === "5y" ? 1260 : history.length - 1;
+  const count = Math.min(requested, history.length - 1);
+  const startIndex = history.length - count - 1;
+  const segment = history.slice(Math.max(0, startIndex));
+  const returns = [];
+  for (let i = 1; i < segment.length; i += 1) {
+    const prev = segment[i - 1].close;
+    const next = segment[i].close;
+    if (prev > 0 && next > 0) returns.push(next / prev - 1);
+  }
+  if (returns.length < 30) {
+    const fallback = FALLBACK_STATS[state.windowKey] || FALLBACK_STATS.all;
+    return { ...fallback, isFallback: true };
+  }
+  const mean = returns.reduce((sum, value) => sum + value, 0) / returns.length;
+  const variance = returns.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / Math.max(returns.length - 1, 1);
+  return {
+    muPrice: mean * 252,
+    vol: Math.sqrt(variance) * Math.sqrt(252),
+    start: segment[0].date,
+    end: segment[segment.length - 1].date,
+    isFallback: false
+  };
+}
+
+function market52WeekRange() {
+  if (!state.market.liveHistory || state.market.history.length < 60) {
+    return { ...FALLBACK_52W };
+  }
+  const recent = state.market.history.slice(-244);
+  return {
+    high: Math.max(...recent.map((row) => row.close)),
+    low: Math.min(...recent.map((row) => row.close))
+  };
+}
+
+function computeAnalysis() {
+  const stats = getMarketStats();
+  const yieldInfo = getSelectedYield();
+  const riskLevel = RISK_LEVELS[clamp(state.riskScore - 1, 0, RISK_LEVELS.length - 1)];
+  const rf = yieldInfo.rate;
+  const autoMu = stats.muPrice + state.dividend;
+  let mu = state.autoMu ? autoMu : (isNumber(state.muOverride) ? state.muOverride : autoMu);
+  let vol = state.autoVol ? stats.vol : (isNumber(state.volOverride) ? state.volOverride : stats.vol);
+  mu = clamp(mu, -0.90, 1.50);
+  vol = clamp(vol, 0.0001, 1.20);
+  const premium = mu - rf;
+  const sharpe = premium / vol;
+  const A = riskLevel.A;
+
+  const riskRaw = premium > 0 ? premium / (A * vol * vol) : 0;
+  const riskAllowed = clamp(riskRaw, 0, 1);
+  let targetRaw = 0;
+  if (state.target > rf + 1e-12) {
+    targetRaw = premium > 0 ? (state.target - rf) / premium : Infinity;
+  }
+  const targetAllowed = clamp(targetRaw, 0, 1);
+  let weight = 0;
+  if (state.target > rf + 1e-12 && premium > 0) {
+    weight = Math.min(targetAllowed, riskAllowed);
+  }
+  weight = clamp(weight, 0, 1);
+
+  const expectedReturn = rf + weight * premium;
+  const portfolioVol = weight * vol;
+  const portfolioSharpe = portfolioVol > 0 ? premium / vol : null;
+  const var95 = Math.max(0, 1.645 * portfolioVol - expectedReturn);
+  const targetNoRisk = state.target <= rf + 1e-9;
+  const targetImpossible = !targetNoRisk && premium > 0 && state.target > mu + 1e-9;
+  const premiumNonPositive = premium <= 0;
+  const riskBinding = !targetNoRisk && !premiumNonPositive && !targetImpossible && targetRaw > riskAllowed + 1e-9;
+
+  return {
+    stats, yieldInfo, riskLevel, A, rf, mu, vol, premium, sharpe,
+    target: state.target,
+    riskRaw, riskAllowed, targetRaw, targetAllowed, weight,
+    expectedReturn, portfolioVol, portfolioSharpe, var95,
+    targetNoRisk, targetImpossible, premiumNonPositive, riskBinding,
+    capital: state.capital,
+    scenarioBase: state.capital * (1 + expectedReturn),
+    scenarioLow: Math.max(0, state.capital * (1 + expectedReturn - portfolioVol)),
+    scenarioHigh: state.capital * (1 + expectedReturn + portfolioVol)
+  };
+}
+
+/* --------------------------------------------------------------------------
+   Formatting for view
+-------------------------------------------------------------------------- */
+function statusForAnalysis(a) {
+  if (a.targetNoRisk) return { kind: "good", text: "无需风险暴露" };
+  if (a.premiumNonPositive) return { kind: "warn", text: "风险溢价不足" };
+  if (a.targetImpossible) return { kind: "critical", text: "无杠杆下不可达" };
+  if (a.riskBinding) return { kind: "warn", text: "受风险预算限制" };
+  return { kind: "good", text: "目标可达成" };
+}
+
+function thesisForAnalysis(a) {
+  if (a.targetNoRisk) return "目标收益不高于无风险利率，全部资金无需承担权益风险。";
+  if (a.premiumNonPositive) return "风险溢价不为正，模型保留全部无风险资产。";
+  if (a.targetImpossible) return "目标收益高于满仓沪深300的预期收益，按风险偏好允许的仓位配置。";
+  if (a.riskBinding) return "目标收益所需仓位高于风险偏好允许上限，按上限配置。";
+  return "目标收益所需仓位低于风险偏好允许上限，权重由目标收益决定。";
+}
+
+function insightForAnalysis(a) {
+  const rf = formatPct(a.rf, 2);
+  const mu = formatPct(a.mu, 2);
+  const target = formatPct(a.target, 2);
+  const weight = formatPct(a.weight, 1);
+  const expected = formatPct(a.expectedReturn, 2);
+  const riskAllow = a.riskRaw > 1 ? ">100%" : formatPct(a.riskAllowed, 1);
+  if (a.targetNoRisk) {
+    return `目标收益 ${target} 不高于无风险利率 ${rf}，无需承担市场风险。全部资金配置于无风险资产时，预期年化收益约为 ${rf}。`;
+  }
+  if (a.premiumNonPositive) {
+    return `按当前假设，沪深300预期收益 ${mu} 不高于无风险利率 ${rf}，风险资产没有正的风险补偿。本次计算不配置风险资产，全部资金保留在无风险资产。`;
+  }
+  if (a.targetImpossible) {
+    return `即使 100% 配置沪深300，预期年化收益也只有 ${mu}，低于目标 ${target}。在无杠杆约束下目标不可达；按风险偏好计算出的可行仓位为 ${weight}。若需达到该目标，需要调整目标收益或模型假设。`;
+  }
+  if (a.riskBinding) {
+    const gap = Math.max(0, (a.target - a.expectedReturn) * 100);
+    return `目标 ${target} 需要约 ${formatPct(a.targetRaw, 1)} 的沪深300仓位，风险偏好允许的仓位上限为 ${riskAllow}。按上限配置后，预期收益约 ${expected}，较目标低 ${gap.toFixed(2)} 个百分点。若需缩小缺口，可调整风险偏好、目标收益或投资期限。`;
+  }
+  return `当前无风险利率为 ${rf}，沪深300风险溢价为 ${formatPct(a.premium, 2)}。目标收益 ${target} 对应约 ${formatPct(a.targetRaw, 1)} 的沪深300仓位，风险偏好允许 ${riskAllow}；取两者较低值 ${weight}，组合预期收益约 ${expected}，按当前假设达到目标。`;
+}
+
+function constraintText(raw) {
+  if (!Number.isFinite(raw)) return "不可达";
+  if (raw > 1.0001) return ">100%";
+  return formatPct(Math.max(0, raw), 1);
+}
+
+/* --------------------------------------------------------------------------
+   Data status / live panels
+-------------------------------------------------------------------------- */
+function updateDataStatus() {
+  const allLive = state.market.quoteLive && state.market.liveHistory && state.yields.live;
+  const anyLive = state.market.quoteLive || state.market.liveHistory || state.yields.live;
+  let kind = "";
+  let label = "缓存快照";
+  if (state.refreshing) {
+    kind = "loading";
+    label = "正在同步行情";
+  } else if (allLive) {
+    kind = "live";
+    label = "实时数据已连接";
+  } else if (anyLive) {
+    label = "部分数据为缓存";
+  }
+  setDotKind(dom.statusDot, kind);
+  setText(dom.statusText, label);
+  if (dom.dataStatus) {
+    const quoteText = state.market.quoteLive ? `行情 ${state.market.quote.date} ${state.market.quote.time}` : "行情缓存";
+    const yieldText = state.yields.live ? "国债收益率已同步" : "国债收益率为缓存";
+    dom.dataStatus.title = `${quoteText} · ${yieldText}${state.lastAttemptAt ? ` · 最近尝试 ${beijingTimestamp(new Date(state.lastAttemptAt))}` : ""}`;
+  }
+  if (dom.lastRefresh) {
+    dom.lastRefresh.textContent = state.lastAttemptAt
+      ? `最近同步：${beijingTimestamp(new Date(state.lastAttemptAt), true)}（北京时间）`
+      : "最近同步：—";
+  }
+
+  const marketLive = state.market.quoteLive && state.market.liveHistory;
+  const marketPartial = state.market.quoteLive || state.market.liveHistory;
+  setDotKind(dom.marketSourceBadge ? $(".status-dot", dom.marketSourceBadge) : null, state.market.quoteLive ? "live" : "");
+  setText(dom.marketSourceText, marketLive ? "实时" : marketPartial ? "部分实时" : "缓存");
+  setDotKind(dom.marketChartDot, state.market.liveHistory ? "live" : "");
+  setDotKind(dom.marketDot, marketPartial ? "live" : "");
+  const rfPill = dom.rfLiveLabel ? dom.rfLiveLabel.parentElement : null;
+  setDotKind(rfPill ? $(".status-dot", rfPill) : null, state.yields.live ? "live" : "");
+  setText(dom.rfLiveLabel, state.yields.live ? "自动抓取" : "缓存快照");
+  if (dom.refreshBtn) {
+    dom.refreshBtn.disabled = state.refreshing;
+    dom.refreshBtn.classList.toggle("spinning", state.refreshing);
+    dom.refreshBtn.setAttribute("aria-busy", String(state.refreshing));
+  }
+}
+
+function renderYieldPanel() {
+  const selected = getSelectedYield();
+  setText(dom.rfValue, selected.raw.toFixed(3));
+  const arrow = selected.bpChange >= 0 ? "↑ +" : "↓ −";
+  setText(dom.rfChange, `${arrow}${Math.abs(selected.bpChange).toFixed(1)} bp`);
+  setText(dom.rfTenorLabel, `中国 ${TENORS[state.tenor].label}国债到期收益率`);
+  setText(dom.rfDate, `数据日 ${formatMD(selected.date)}`);
+  dom.tenorButtons.forEach((button) => {
+    const tenor = button.dataset.tenor;
+    const info = getSelectedYield(tenor);
+    const strong = $("strong", button);
+    if (strong) strong.textContent = info.available ? `${info.raw.toFixed(3)}%` : "—";
+    button.setAttribute("aria-pressed", String(tenor === state.tenor));
+  });
+  const records = (state.yields.data[state.tenor] || []).slice(0, 30).reverse();
+  drawSparkline(dom.rfSpark, records.map((row) => row.value), {
+    color: "var(--series-2)",
+    label: `近30期中国${TENORS[state.tenor].label}国债收益率走势，最新 ${selected.raw.toFixed(3)}%`
+  });
+}
+
+function renderTopTiles(a) {
+  const quote = state.market.quote || FALLBACK_QUOTE;
+  const pct = isNumber(quote.pct) ? quote.pct : (quote.prevClose ? quote.price / quote.prevClose - 1 : 0);
+  const up = pct >= 0;
+  setText(dom.mktPrice, priceFmt.format(quote.price));
+  setText(dom.mktPct, `${up ? "▲" : "▼"} ${signedPctText(pct, 2)}`);
+  dom.mktPct.classList.toggle("is-up", up);
+  dom.mktPct.classList.toggle("is-down", !up);
+  setText(dom.mktChange, signedChangeText(quote.change, 2));
+  dom.mktChange.classList.toggle("is-up", up);
+  dom.mktChange.classList.toggle("is-down", !up);
+  setText(dom.mktTime, `${formatMD(quote.date)} ${quote.time || ""}`.trim());
+  const range = market52WeekRange();
+  setText(dom.mkt52w, `${formatNum(range.low, 2)} — ${formatNum(range.high, 2)}`);
+
+  setText(dom.tileExpected, formatPct(a.mu, 2));
+  setText(dom.tileVol, formatPct(a.vol, 2));
+  const marketSharpe = a.vol > 0 ? (a.mu - a.rf) / a.vol : NaN;
+  setText(dom.tileSharpe, formatSlope(marketSharpe));
+  const expectedSource = state.autoMu
+    ? `${WINDOW_LABELS[state.windowKey]}价格收益 + 股息率参考`
+    : "手动收益假设";
+  setText(dom.tileExpectedNote, expectedSource);
+  setText(dom.tileSample, `样本 ${formatYM(a.stats.start)} — ${formatYM(a.stats.end)}`);
+}
+
+/* --------------------------------------------------------------------------
+   Inputs / result rendering
+-------------------------------------------------------------------------- */
+function renderInputs(a) {
+  const riskLevel = a.riskLevel;
+  if (document.activeElement !== dom.targetNumber) {
+    dom.targetNumber.value = (state.target * 100).toFixed(1);
+  }
+  if (document.activeElement !== dom.capitalInput) {
+    dom.capitalInput.value = String(Math.round((state.capital / 10000) * 100) / 100);
+  }
+  dom.targetRange.value = String(state.target * 100);
+  dom.riskRange.value = String(state.riskScore);
+  setRangeFill(dom.targetRange, (state.target / 20) * 100);
+  setRangeFill(dom.riskRange, ((state.riskScore - 1) / 9) * 100);
+  setText(dom.riskLabel, riskLevel.label);
+  setText(dom.riskA, `A = ${riskLevel.A.toFixed(1)}`);
+  setText(dom.riskDesc, riskLevel.desc);
+  dom.riskRange.setAttribute("aria-valuetext", `${riskLevel.label}，风险厌恶系数 ${riskLevel.A.toFixed(1)}`);
+  Array.from(dom.riskTicks.children).forEach((tick, index) => {
+    tick.classList.toggle("on", index < state.riskScore);
+  });
+  dom.quickButtons.forEach((button) => {
+    const amount = Number(button.dataset.capital) * 10000;
+    button.setAttribute("aria-pressed", String(Math.abs(amount - state.capital) < 1));
+  });
+
+  if (document.activeElement !== dom.muInput || state.autoMu) {
+    dom.muInput.value = (a.mu * 100).toFixed(2);
+  }
+  if (document.activeElement !== dom.volInput || state.autoVol) {
+    dom.volInput.value = (a.vol * 100).toFixed(2);
+  }
+  if (document.activeElement !== dom.dividendInput) {
+    dom.dividendInput.value = (state.dividend * 100).toFixed(2);
+  }
+  dom.muAuto.textContent = state.autoMu ? "自动" : "手动";
+  dom.volAuto.textContent = state.autoVol ? "自动" : "手动";
+  dom.muAuto.classList.toggle("manual", !state.autoMu);
+  dom.volAuto.classList.toggle("manual", !state.autoVol);
+  const winLabel = WINDOW_LABELS[state.windowKey];
+  const autoExpression = `${winLabel}价格收益年化 ${formatPct(a.stats.muPrice, 2)} + 股息率参考 ${formatPct(state.dividend, 2)}（截至 ${DIVIDEND_DATE}）= ${formatPct(a.stats.muPrice + state.dividend, 2)}。`;
+  const manualSuffix = (!state.autoMu || !state.autoVol) ? " 当前含手动覆盖。" : " 预期收益和波动率可按需手动覆盖。";
+  setText(dom.assumptionNote, `${autoExpression}${manualSuffix}`);
+  dom.windowSelect.value = state.windowKey;
+
+  if (a.premium <= 0) {
+    dom.targetHint.textContent = "按当前假设，市场预期收益不高于无风险利率，风险资产没有正的风险补偿。";
+    dom.targetHint.classList.add("is-warn");
+  } else if (a.target > a.mu + 1e-9) {
+    dom.targetHint.textContent = `目标高于满仓可实现上限 ${formatPct(a.mu, 2)}；无杠杆条件下不可达，可下调目标。`;
+    dom.targetHint.classList.add("is-warn");
+  } else {
+    dom.targetHint.textContent = `无杠杆下，满仓沪深300的预期收益约 ${formatPct(a.mu, 2)}，可作为目标上限参考。`;
+    dom.targetHint.classList.remove("is-warn");
+  }
+}
+
+function renderStockSplit(a) {
+  const data = state.constituents;
+  if (!data || !Array.isArray(data.stocks) || !dom.stockTableBody) return;
+  const totalEquity = Math.round(a.weight * a.capital);
+  const stocks = data.stocks
+    .map((stock) => ({
+      code: String(stock.code || ""),
+      name: String(stock.name || ""),
+      exchange: String(stock.exchange || ""),
+      sector: String(stock.sector || "—"),
+      weight: Number(stock.weight)
+    }))
+    .filter((stock) => stock.name && Number.isFinite(stock.weight) && stock.weight > 0);
+  const top10Weight = stocks.reduce((sum, stock) => sum + stock.weight, 0);
+  const residualWeight = Math.max(0, 100 - top10Weight);
+  const maxWeight = Math.max(...stocks.map((stock) => stock.weight), 0.01);
+
+  setText(dom.stockAsOf, data.asOf || "—");
+  setText(dom.stockTop10Sum, `${top10Weight.toFixed(2)}%`);
+  clearNode(dom.stockTableBody);
+
+  if (totalEquity <= 0 || !stocks.length) {
+    dom.stockTableWrap.hidden = true;
+    dom.stockEmpty.hidden = false;
+    setText(dom.stockEquityAmount, "¥0");
+    setText(dom.stockDirectAmount, "¥0");
+    setText(dom.stockFundAmount, "¥0");
+    return;
+  }
+
+  dom.stockTableWrap.hidden = false;
+  dom.stockEmpty.hidden = true;
+
+  let directAmount = 0;
+  stocks.forEach((stock) => {
+    const amount = Math.round((totalEquity * stock.weight) / 100);
+    directAmount += amount;
+    const tr = document.createElement("tr");
+
+    const nameCell = document.createElement("td");
+    const nameLine = makeEl("div", "stock-name-line");
+    nameLine.appendChild(makeEl("strong", "", stock.name));
+    nameLine.appendChild(makeEl("code", "", `${stock.code}.${stock.exchange}`));
+    nameCell.appendChild(nameLine);
+
+    const sectorCell = makeEl("td", "stock-sector", stock.sector);
+    const weightCell = document.createElement("td");
+    const weightBox = makeEl("div", "stock-weight-cell");
+    weightBox.appendChild(makeEl("span", "", `${stock.weight.toFixed(2)}%`));
+    const track = makeEl("div", "stock-weight-track");
+    track.setAttribute("aria-hidden", "true");
+    const fill = makeEl("span");
+    fill.style.width = `${Math.max(4, (stock.weight / maxWeight) * 100)}%`;
+    track.appendChild(fill);
+    weightBox.appendChild(track);
+    weightCell.appendChild(weightBox);
+
+    const amountCell = makeEl("td", "stock-amount", formatMoney(amount));
+    tr.appendChild(nameCell);
+    tr.appendChild(sectorCell);
+    tr.appendChild(weightCell);
+    tr.appendChild(amountCell);
+    dom.stockTableBody.appendChild(tr);
+  });
+
+  const fundAmount = totalEquity - directAmount;
+  const residualRow = document.createElement("tr");
+  residualRow.className = "stock-residual";
+  const fundNameCell = document.createElement("td");
+  const fundNameLine = makeEl("div", "stock-name-line");
+  fundNameLine.appendChild(makeEl("strong", "", "其余 290 只成分股"));
+  fundNameLine.appendChild(makeEl("code", "", "指数基金"));
+  fundNameCell.appendChild(fundNameLine);
+  residualRow.appendChild(fundNameCell);
+  residualRow.appendChild(makeEl("td", "stock-sector", "—"));
+  residualRow.appendChild(makeEl("td", "stock-amount", `${residualWeight.toFixed(2)}%`));
+  residualRow.appendChild(makeEl("td", "stock-amount", formatMoney(fundAmount)));
+  dom.stockTableBody.appendChild(residualRow);
+
+  const totalRow = document.createElement("tr");
+  totalRow.className = "stock-total";
+  totalRow.appendChild(makeEl("td", "", "沪深300权益合计"));
+  totalRow.appendChild(makeEl("td", "stock-sector", "—"));
+  totalRow.appendChild(makeEl("td", "stock-amount", "100.00%"));
+  totalRow.appendChild(makeEl("td", "stock-amount", formatMoney(totalEquity)));
+  dom.stockTableBody.appendChild(totalRow);
+
+  setText(dom.stockEquityAmount, formatMoney(totalEquity));
+  setText(dom.stockDirectAmount, formatMoney(directAmount));
+  setText(dom.stockFundAmount, formatMoney(fundAmount));
+}
+
+let announceTimer = 0;
+function announceResult(a) {
+  window.clearTimeout(announceTimer);
+  announceTimer = window.setTimeout(() => {
+    setText(dom.liveSummary, `推荐配置：沪深300 ${formatPct(a.weight, 1)}，无风险资产 ${formatPct(1 - a.weight, 1)}；组合预期年化收益 ${formatPct(a.expectedReturn, 2)}，年化波动 ${formatPct(a.portfolioVol, 2)}。个股拆分金额见下方个股拆分表。`);
+  }, 700);
+}
+
+function renderResults(a) {
+  const status = statusForAnalysis(a);
+  announceResult(a);
+  setText(dom.goalStatusText, status.text);
+  dom.goalStatus.classList.remove("good", "warn", "critical");
+  dom.goalStatus.classList.add(status.kind);
+  if (dom.goalIcon) dom.goalIcon.innerHTML = STATUS_ICONS[status.kind] || STATUS_ICONS.good;
+
+  const weightPct = a.weight * 100;
+  const equityPctText = weightPct.toFixed(1);
+  const rfPctText = (100 - Number(equityPctText)).toFixed(1);
+  setText(dom.heroWeight, equityPctText);
+  setText(dom.legendEquity, `${equityPctText}%`);
+  setText(dom.legendRf, `${rfPctText}%`);
+  dom.segEquity.style.width = `${weightPct}%`;
+  dom.segRf.style.width = `${(1 - a.weight) * 100}%`;
+  setText(dom.resultThesis, thesisForAnalysis(a));
+
+  setText(dom.constraintTarget, constraintText(a.targetRaw));
+  setText(dom.constraintRisk, constraintText(a.riskRaw));
+  setText(dom.constraintFinal, formatPct(a.weight, 1));
+  dom.meterTarget.style.width = `${a.targetAllowed * 100}%`;
+  dom.meterRisk.style.width = `${a.riskAllowed * 100}%`;
+
+  setText(dom.metricReturn, formatPct(a.expectedReturn, 2));
+  setText(dom.metricReturnSub, `目标 ${formatPct(a.target, 2)}${a.expectedReturn < a.target - 0.00005 ? ` · 差 ${(Math.max(0, a.target - a.expectedReturn) * 100).toFixed(2)}pct` : " · 模型达标"}`);
+  setText(dom.metricVol, formatPct(a.portfolioVol, 2));
+  setText(dom.metricSharpe, a.portfolioSharpe === null ? "—" : formatSlope(a.portfolioSharpe));
+  setText(dom.metricSharpeSub, a.weight > 0 ? "与市场组合斜率一致" : "无风险组合不定义夏普");
+  setText(dom.metricVar, formatPct(a.var95, 1));
+  setText(dom.metricVarSub, `约 ${formatMoney(a.var95 * a.capital)}`);
+
+  const insightKind = status.kind === "critical" ? "critical" : status.kind === "warn" ? "warn" : "";
+  dom.insight.classList.remove("warn", "critical");
+  if (insightKind) dom.insight.classList.add(insightKind);
+  if (dom.insightIcon) dom.insightIcon.innerHTML = STATUS_ICONS[status.kind] || STATUS_ICONS.good;
+  setText(dom.insightText, insightForAnalysis(a));
+
+  setText(dom.scenarioLow, formatMoney(a.scenarioLow));
+  setText(dom.scenarioBase, formatMoney(a.scenarioBase));
+  setText(dom.scenarioHigh, formatMoney(a.scenarioHigh));
+
+  const totalCapital = Math.round(a.capital);
+  const equityAmount = Math.round(a.weight * a.capital);
+  const rows = [
+    { name: "沪深300权益组合", note: "市场组合 · 指数基金或个股拆分", weight: Number(equityPctText) / 100, amount: equityAmount, kind: "equity" },
+    { name: "国债 ETF / 货币基金", note: "无风险资产 · Rf", weight: Number(rfPctText) / 100, amount: totalCapital - equityAmount, kind: "rf" }
+  ];
+  clearNode(dom.allocTableBody);
+  rows.forEach((row) => {
+    const tr = document.createElement("tr");
+    const tdName = document.createElement("td");
+    const cell = makeEl("div", "asset-cell");
+    const swatch = makeEl("i", `swatch ${row.kind}`);
+    swatch.setAttribute("aria-hidden", "true");
+    const names = makeEl("div", "asset-names");
+    names.appendChild(makeEl("span", "", row.name));
+    names.appendChild(makeEl("small", "", row.note));
+    cell.appendChild(swatch);
+    cell.appendChild(names);
+    tdName.appendChild(cell);
+    const tdWeight = makeEl("td", "num", formatPct(row.weight, 1));
+    const tdAmount = makeEl("td", "num", formatMoney(row.amount));
+    tr.appendChild(tdName);
+    tr.appendChild(tdWeight);
+    tr.appendChild(tdAmount);
+    dom.allocTableBody.appendChild(tr);
+  });
+  const total = document.createElement("tr");
+  total.className = "total";
+  total.appendChild(makeEl("td", "", "合计"));
+  total.appendChild(makeEl("td", "num", "100.0%"));
+  total.appendChild(makeEl("td", "num", formatMoney(totalCapital)));
+  dom.allocTableBody.appendChild(total);
+
+  // Model side ledger
+  setText(dom.cmlRf, formatPct(a.rf, 2));
+  setText(dom.cmlMu, formatPct(a.mu, 2));
+  setText(dom.cmlSigma, formatPct(a.vol, 2));
+  setText(dom.cmlSlope, formatSlope(a.sharpe));
+  setText(dom.cmlA, a.A.toFixed(1));
+  const slopePerPoint = Math.abs(a.sharpe) * 1;
+  setText(dom.cmlInterpretation, `当前市场组合的夏普比率为 ${formatSlope(a.sharpe)}：每多承担 1 个百分点的年化波动，模型预期${a.sharpe >= 0 ? "多" : "少"}获得约 ${slopePerPoint.toFixed(2)} 个百分点的年化收益。`);
+
+  renderStockSplit(a);
+}
+
+/* --------------------------------------------------------------------------
+   Sparkline
+-------------------------------------------------------------------------- */
+function drawSparkline(svg, values, options = {}) {
+  if (!svg) return;
+  const width = Math.max(120, Math.floor(svg.parentElement.clientWidth || svg.clientWidth || 220));
+  const height = 58;
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("width", width);
+  svg.setAttribute("height", height);
+  if (options.label) svg.setAttribute("aria-label", options.label);
+  clearNode(svg);
+  const clean = values.map(Number).filter(Number.isFinite);
+  if (clean.length < 2) return;
+  const min = Math.min(...clean);
+  const max = Math.max(...clean);
+  const pad = (max - min || Math.abs(max) * 0.02 || 0.01) * 0.35;
+  const lo = min - pad;
+  const hi = max + pad;
+  const padX = 4;
+  const padY = 7;
+  const x = (index) => padX + (index / (clean.length - 1)) * (width - padX * 2);
+  const y = (value) => padY + (1 - (value - lo) / (hi - lo)) * (height - padY * 2);
+  const linePoints = clean.map((value, index) => `${x(index).toFixed(2)},${y(value).toFixed(2)}`).join(" ");
+  const area = svgNode("polygon", {
+    points: `${x(0).toFixed(2)},${height - 1} ${linePoints} ${x(clean.length - 1).toFixed(2)},${height - 1}`,
+    fill: options.color || "var(--series-3)", opacity: 0.10
+  });
+  svg.appendChild(area);
+  const line = svgNode("polyline", {
+    points: linePoints, fill: "none", stroke: options.color || "var(--series-3)",
+    "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round"
+  });
+  svg.appendChild(line);
+  const lastX = x(clean.length - 1);
+  const lastY = y(clean[clean.length - 1]);
+  svg.appendChild(svgNode("circle", {
+    cx: lastX, cy: lastY, r: 4, fill: options.color || "var(--series-3)",
+    stroke: "var(--surface)", "stroke-width": 2
+  }));
+}
+
+/* --------------------------------------------------------------------------
+   CML chart
+-------------------------------------------------------------------------- */
+function tooltipRow(key, value) {
+  const row = makeEl("div", "tt-row");
+  row.appendChild(makeEl("span", "", key));
+  row.appendChild(makeEl("span", "", value));
+  return row;
+}
+function fillTooltip(tt, meta, value, rows) {
+  clearNode(tt);
+  tt.appendChild(makeEl("div", "tt-date", meta));
+  tt.appendChild(makeEl("div", "tt-value", value));
+  const list = makeEl("div", "tt-rows");
+  rows.forEach(([key, val]) => list.appendChild(tooltipRow(key, val)));
+  tt.appendChild(list);
+}
+function placeTooltip(tt, box, x, y, chartWidth, chartHeight) {
+  const below = y < chartHeight * 0.48;
+  tt.classList.toggle("below", below);
+  const estimatedHalf = Math.min(95, Math.max(62, chartWidth * 0.17));
+  tt.style.left = `${clamp(x, estimatedHalf, chartWidth - estimatedHalf)}px`;
+  tt.style.top = `${y}px`;
+  tt.hidden = false;
+}
+
+function renderCMLChart() {
+  const svg = dom.cmlChart;
+  if (!svg || !analysis) return;
+  const box = svg.parentElement;
+  const width = Math.max(300, Math.floor(box.clientWidth || 600));
+  const height = width < 480 ? 320 : width < 720 ? 350 : 392;
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  svg.setAttribute("aria-label", `资本市场线。无风险利率 ${formatPct(analysis.rf, 2)}，沪深300市场组合预期收益 ${formatPct(analysis.mu, 2)}、波动率 ${formatPct(analysis.vol, 2)}；推荐组合预期收益 ${formatPct(analysis.expectedReturn, 2)}、波动率 ${formatPct(analysis.portfolioVol, 2)}。`);
+  clearNode(svg);
+  const a = analysis;
+  const margin = { top: 22, right: width < 520 ? 14 : 24, bottom: width < 520 ? 37 : 43, left: width < 520 ? 45 : 56 };
+  const plotW = width - margin.left - margin.right;
+  const plotH = height - margin.top - margin.bottom;
+  const xMaxRaw = Math.max(a.vol * 1.62, 0.035);
+  const slope = a.vol > 0 ? (a.mu - a.rf) / a.vol : 0;
+  const lineEndY = a.rf + slope * xMaxRaw;
+  const yMinCandidate = Math.min(0, a.rf, lineEndY, a.mu, a.expectedReturn);
+  const yMaxCandidate = Math.max(0.01, a.rf, lineEndY, a.mu, a.expectedReturn);
+  const yPad = (yMaxCandidate - yMinCandidate) * 0.10 || 0.01;
+  const yMinRaw = yMinCandidate >= 0 ? 0 : yMinCandidate - yPad * 0.25;
+  const yMaxRaw = yMaxCandidate + yPad;
+  const xs = niceScale(0, xMaxRaw, 4);
+  const ys = niceScale(yMinRaw, yMaxRaw, 4);
+  const percentLabel = (value, step) => {
+    const decimals = Math.abs(step * 100 - Math.round(step * 100)) > 1e-7 ? 1 : 0;
+    if (Math.abs(value) < 1e-9) return "0%";
+    return `${(value * 100).toFixed(decimals)}%`;
+  };
+  const plotLeft = margin.left;
+  const plotTop = margin.top;
+  const plotBottom = margin.top + plotH;
+  const xFor = (value) => plotLeft + ((value - xs.min) / (xs.max - xs.min)) * plotW;
+  const yFor = (value) => plotTop + (1 - (value - ys.min) / (ys.max - ys.min)) * plotH;
+  const clipId = "cml-clip";
+  const defs = svgNode("defs");
+  const clip = svgNode("clipPath", { id: clipId });
+  clip.appendChild(svgNode("rect", { x: plotLeft, y: plotTop, width: plotW, height: plotH + 1 }));
+  defs.appendChild(clip);
+  svg.appendChild(defs);
+  const plotGroup = svgNode("g", { "clip-path": `url(#${clipId})` });
+  svg.appendChild(plotGroup);
+
+  // Grid
+  ys.ticks.forEach((tick) => {
+    const y = yFor(tick);
+    plotGroup.appendChild(svgNode("line", {
+      x1: plotLeft, y1: y, x2: plotLeft + plotW, y2: y,
+      stroke: "var(--grid)", "stroke-width": 1
+    }));
+    svgText(svg, plotLeft - 9, y + 3.5, percentLabel(tick, ys.step), {
+      "text-anchor": "end", "font-size": 9.5, fill: "var(--ink-3)"
+    });
+  });
+  xs.ticks.forEach((tick) => {
+    if (tick <= 0) return;
+    const x = xFor(tick);
+    plotGroup.appendChild(svgNode("line", {
+      x1: x, y1: plotTop, x2: x, y2: plotBottom,
+      stroke: "var(--grid)", "stroke-width": 1, opacity: 0.7
+    }));
+    svgText(svg, x, height - (width < 520 ? 15 : 18), percentLabel(tick, xs.step), {
+      "text-anchor": "middle", "font-size": 9.5, fill: "var(--ink-3)"
+    });
+  });
+  // Axis baseline
+  plotGroup.appendChild(svgNode("line", {
+    x1: plotLeft, y1: plotBottom, x2: plotLeft + plotW, y2: plotBottom,
+    stroke: "var(--axis)", "stroke-width": 1
+  }));
+  // Labels
+  svgText(svg, plotLeft, plotTop - 9, "预期年化收益 E(Rp)", { "font-size": 9.5, fill: "var(--ink-3)" });
+  svgText(svg, plotLeft + plotW, height - 5, width < 520 ? "波动率 σp →" : "年化波动率 σp →", { "text-anchor": "end", "font-size": 9.5, fill: "var(--ink-3)" });
+
+  const mX = xFor(a.vol);
+  const mY = yFor(a.mu);
+  const rfX = xFor(0);
+  const rfY = yFor(a.rf);
+  const endX = xFor(xMaxRaw);
+  const endY = yFor(lineEndY);
+
+  // Solid lending segment and dashed theoretical borrowing segment.
+  plotGroup.appendChild(svgNode("line", {
+    x1: rfX, y1: rfY, x2: mX, y2: mY, stroke: "var(--series-1)", "stroke-width": 2,
+    "stroke-linecap": "round"
+  }));
+  plotGroup.appendChild(svgNode("line", {
+    x1: mX, y1: mY, x2: endX, y2: endY, stroke: "var(--series-1)", "stroke-width": 2,
+    "stroke-linecap": "round", "stroke-dasharray": "5 6", opacity: 0.62
+  }));
+  if (width >= 520 && mX < endX - 50) {
+    svgText(plotGroup, Math.min(endX - 2, mX + (endX - mX) * 0.62), Math.min(endY - 9, mY - 12), "融资区（理论）", {
+      "text-anchor": "middle", "font-size": 8.5, fill: "var(--ink-3)"
+    });
+  }
+
+  // Data points with generous hit targets.
+  const pX = xFor(a.portfolioVol);
+  const pY = yFor(a.expectedReturn);
+  const points = [
+    {
+      x: rfX, y: rfY, color: "var(--series-2)", r: 5,
+      title: "无风险资产 Rf", meta: `${TENORS[state.tenor].label}国债`,
+      value: formatPct(a.rf, 2),
+      rows: [["沪深300权重", "0.0%"], ["年化波动", "0.00%"], ["数据日", formatMD(a.yieldInfo.date)]],
+      label: "无风险资产 · Rf"
+    },
+    {
+      x: mX, y: mY, color: "var(--series-1)", r: 5,
+      title: "市场组合 M", meta: "沪深300 · 市场组合",
+      value: `${formatPct(a.mu, 2)} / σ ${formatPct(a.vol, 2)}`,
+      rows: [["沪深300权重", "100.0%"], ["市场夏普", formatSlope(a.sharpe)], ["风险资产", "沪深300指数"]],
+      label: "市场组合 M"
+    },
+    {
+      x: pX, y: pY, color: "var(--series-3)", r: 6,
+      title: "推荐组合 P", meta: "目标与风险约束下的配置点",
+      value: `${formatPct(a.expectedReturn, 2)} / σ ${formatPct(a.portfolioVol, 2)}`,
+      rows: [["沪深300权重", formatPct(a.weight, 1)], ["年化波动", formatPct(a.portfolioVol, 2)], ["目标收益", formatPct(a.target, 2)]],
+      label: "推荐组合"
+    }
+  ];
+
+  const labelLayer = svgNode("g");
+  svg.appendChild(labelLayer);
+  const compact = width < 520;
+  const compactLabels = ["无风险 Rf", "市场组合 M", "推荐组合"];
+  points.forEach((point, index) => {
+    const isYou = index === 2;
+    const offX = compact ? 9 : 11;
+    let labelX = point.x + offX;
+    let labelY = compact ? point.y - 18 : isYou ? point.y + 18 : point.y - 20;
+    let anchor = "start";
+    if (labelX + (compact ? 78 : 115) > width - 4) {
+      labelX = point.x - offX;
+      anchor = "end";
+    }
+    if (labelY < 14) labelY = point.y + 18;
+    const labelText = compact ? compactLabels[index] : point.label;
+    svgText(labelLayer, labelX, labelY, labelText, {
+      "text-anchor": anchor, "font-size": compact ? 9.5 : 10.5, "font-weight": 600,
+      fill: isYou ? "var(--ink)" : "var(--ink-2)", "paint-order": "stroke",
+      stroke: "var(--surface)", "stroke-width": 3, "stroke-linejoin": "round"
+    });
+    const subText = index === 0
+      ? formatPct(a.rf, 2)
+      : index === 1
+        ? (compact ? formatPct(a.mu, 1) : `${formatPct(a.mu, 2)} · σ ${formatPct(a.vol, 1)}`)
+        : (compact ? `${formatPct(a.weight, 1)} 仓位` : `${formatPct(a.weight, 1)} 仓位`);
+    svgText(labelLayer, labelX, labelY + 11, subText, {
+      "text-anchor": anchor, "font-size": compact ? 8.5 : 9, fill: "var(--ink-3)", "paint-order": "stroke",
+      stroke: "var(--surface)", "stroke-width": 3
+    });
+    const dot = svgNode("g", {
+      class: "cml-point", tabindex: 0, role: "img", focusable: "true",
+      "aria-label": `${point.title}。${point.value}。${point.rows.map((r) => `${r[0]} ${r[1]}`).join("，")}`
+    });
+    dot.style.cursor = "pointer";
+    dot.appendChild(svgNode("circle", {
+      cx: point.x, cy: point.y, r: 15, fill: "transparent", "pointer-events": "all"
+    }));
+    dot.appendChild(svgNode("circle", {
+      cx: point.x, cy: point.y, r: point.r + 4, fill: point.color, opacity: 0.14
+    }));
+    dot.appendChild(svgNode("circle", {
+      cx: point.x, cy: point.y, r: point.r, fill: point.color,
+      stroke: "var(--surface)", "stroke-width": 2
+    }));
+    const show = () => {
+      fillTooltip(dom.cmlTooltip, `${point.title} · ${point.meta}`, point.value, point.rows);
+      placeTooltip(dom.cmlTooltip, box, point.x, point.y, width, height);
+    };
+    const hide = () => { dom.cmlTooltip.hidden = true; };
+    dot.addEventListener("pointerenter", show);
+    dot.addEventListener("pointerdown", show);
+    dot.addEventListener("pointerleave", hide);
+    dot.addEventListener("focus", show);
+    dot.addEventListener("blur", hide);
+    dot.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); show(); }
+    });
+    svg.appendChild(dot);
+  });
+  dom.cmlTooltip.hidden = true;
+}
+
+/* --------------------------------------------------------------------------
+   Market price chart
+-------------------------------------------------------------------------- */
+function filteredMarketData() {
+  const history = state.market.history;
+  if (!history.length) return [];
+  if (state.period === "all") return history.slice();
+  const years = state.period === "1y" ? 1 : state.period === "3y" ? 3 : 5;
+  const lastDate = new Date(`${history[history.length - 1].date}T00:00:00+08:00`);
+  const cutoff = new Date(lastDate);
+  cutoff.setFullYear(lastDate.getFullYear() - years);
+  return history.filter((row) => new Date(`${row.date}T00:00:00+08:00`) >= cutoff);
+}
+
+function marketRangeStats(data) {
+  if (data.length < 2) return { returnPct: 0, vol: 0, high: 0, low: 0 };
+  const returns = [];
+  for (let i = 1; i < data.length; i += 1) {
+    returns.push(data[i].close / data[i - 1].close - 1);
+  }
+  const mean = returns.reduce((sum, value) => sum + value, 0) / returns.length;
+  const variance = returns.reduce((sum, value) => sum + Math.pow(value - mean, 2), 0) / Math.max(returns.length - 1, 1);
+  const factor = state.market.liveHistory ? 252 : 52;
+  return {
+    returnPct: data[data.length - 1].close / data[0].close - 1,
+    vol: Math.sqrt(variance) * Math.sqrt(factor),
+    high: Math.max(...data.map((row) => row.close)),
+    low: Math.min(...data.map((row) => row.close))
+  };
+}
+
+function renderMarketMeta() {
+  const data = filteredMarketData();
+  if (!data.length) return;
+  const stats = marketRangeStats(data);
+  const up = stats.returnPct >= 0;
+  setText(dom.rangeReturn, `${up ? "▲ " : "▼ "}${signedPctText(stats.returnPct, 2)}`);
+  dom.rangeReturn.classList.toggle("is-up", up);
+  dom.rangeReturn.classList.toggle("is-down", !up);
+  setText(dom.rangeVol, formatPct(stats.vol, 2));
+  const sampleLabel = state.market.liveHistory ? "个交易日" : "个周度样本";
+  setText(dom.marketRangeText, `${data[0].date} — ${data[data.length - 1].date} · ${data.length}${sampleLabel} · 高 ${formatNum(stats.high, 2)} / 低 ${formatNum(stats.low, 2)}`);
+}
+
+function dateTickLabel(date, spanDays) {
+  if (spanDays > 1400) return String(date.getFullYear());
+  if (spanDays > 420) return `${String(date.getFullYear()).slice(2)}/${pad2(date.getMonth() + 1)}`;
+  return `${pad2(date.getMonth() + 1)}/${pad2(date.getDate())}`;
+}
+
+function renderMarketChart() {
+  const svg = dom.marketChart;
+  if (!svg) return;
+  const data = filteredMarketData();
+  const box = svg.parentElement;
+  const width = Math.max(300, Math.floor(box.clientWidth || 760));
+  const height = width < 520 ? 278 : width < 760 ? 326 : 352;
+  svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+  if (data.length < 2) {
+    clearNode(svg);
+    svgText(svg, width / 2, height / 2, "行情数据加载中", { "text-anchor": "middle", fill: "var(--ink-3)" });
+    return;
+  }
+  const latest = data[data.length - 1];
+  const first = data[0];
+  svg.setAttribute("aria-label", `沪深300收盘走势，${PERIOD_LABELS[state.period]}，最新 ${priceFmt.format(latest.close)}，共 ${data.length} 个数据点。使用左右方向键浏览。`);
+  clearNode(svg);
+  marketHoverIndex = null;
+  const margin = { top: 18, right: width < 520 ? 18 : 76, bottom: 36, left: width < 520 ? 45 : 58 };
+  const plotW = width - margin.left - margin.right;
+  const plotH = height - margin.top - margin.bottom;
+  const xMin = dateToMs(first.date);
+  const xMax = dateToMs(latest.date);
+  const minClose = Math.min(...data.map((row) => row.close));
+  const maxClose = Math.max(...data.map((row) => row.close));
+  const pad = (maxClose - minClose) * 0.04 || Math.max(maxClose * 0.02, 1);
+  const ys = niceScale(minClose - pad, maxClose + pad, width < 520 ? 5 : 6);
+  const xFor = (ms) => margin.left + ((ms - xMin) / Math.max(1, xMax - xMin)) * plotW;
+  const yFor = (value) => margin.top + (1 - (value - ys.min) / (ys.max - ys.min)) * plotH;
+
+  const plotGroup = svgNode("g");
+  svg.appendChild(plotGroup);
+  ys.ticks.forEach((tick) => {
+    const y = yFor(tick);
+    plotGroup.appendChild(svgNode("line", {
+      x1: margin.left, y1: y, x2: margin.left + plotW, y2: y,
+      stroke: "var(--grid)", "stroke-width": 1
+    }));
+    const decimals = ys.step < 10 ? 1 : 0;
+    svgText(svg, margin.left - 9, y + 3.5, formatNum(tick, decimals), {
+      "text-anchor": "end", "font-size": 9.5, fill: "var(--ink-3)"
+    });
+  });
+  // Baseline
+  plotGroup.appendChild(svgNode("line", {
+    x1: margin.left, y1: margin.top + plotH, x2: margin.left + plotW, y2: margin.top + plotH,
+    stroke: "var(--axis)", "stroke-width": 1
+  }));
+
+  const spanDays = (xMax - xMin) / 86400000;
+  const tickCount = width < 500 ? 4 : 5;
+  for (let i = 0; i < tickCount; i += 1) {
+    const ms = xMin + ((xMax - xMin) * i) / (tickCount - 1);
+    const x = xFor(ms);
+    const anchor = i === 0 ? "start" : i === tickCount - 1 ? "end" : "middle";
+    svgText(svg, x, height - 14, dateTickLabel(new Date(ms), spanDays), {
+      "text-anchor": anchor, "font-size": 9.5, fill: "var(--ink-3)"
+    });
+  }
+
+  const points = data.map((row) => `${xFor(dateToMs(row.date)).toFixed(2)},${yFor(row.close).toFixed(2)}`);
+  const areaPath = `M ${xFor(dateToMs(first.date)).toFixed(2)} ${margin.top + plotH} L ${points.join(" L ")} L ${xFor(dateToMs(latest.date)).toFixed(2)} ${margin.top + plotH} Z`;
+  plotGroup.appendChild(svgNode("path", {
+    d: areaPath, fill: "var(--series-1)", opacity: 0.10
+  }));
+  plotGroup.appendChild(svgNode("polyline", {
+    points: points.join(" "), fill: "none", stroke: "var(--series-1)",
+    "stroke-width": 2, "stroke-linecap": "round", "stroke-linejoin": "round"
+  }));
+
+  const endX = xFor(xMax);
+  const endY = yFor(latest.close);
+  // Direct endpoint label. On narrow charts the label sits inside the plot above the point.
+  if (width >= 520) {
+    svgText(svg, endX + 10, endY + 4, formatNum(latest.close, 2), {
+      "font-size": 11, "font-weight": 600, fill: "var(--ink)", "paint-order": "stroke",
+      stroke: "var(--surface)", "stroke-width": 3
+    });
+    svgText(svg, endX + 10, endY + 17, formatMD(latest.date), {
+      "font-size": 8.5, fill: "var(--ink-3)", "paint-order": "stroke", stroke: "var(--surface)", "stroke-width": 3
+    });
+  } else {
+    svgText(svg, Math.min(endX - 2, width - 10), Math.min(margin.top + plotH - 8, endY + 19), formatNum(latest.close, 2), {
+      "text-anchor": "end", "font-size": 10.5, "font-weight": 600, fill: "var(--ink)", "paint-order": "stroke",
+      stroke: "var(--surface)", "stroke-width": 3
+    });
+  }
+  plotGroup.appendChild(svgNode("circle", {
+    cx: endX, cy: endY, r: 4.5, fill: "var(--series-1)",
+    stroke: "var(--surface)", "stroke-width": 2
+  }));
+
+  const hoverGroup = svgNode("g", { "pointer-events": "none" });
+  svg.appendChild(hoverGroup);
+  const crossLine = svgNode("line", {
+    x1: 0, y1: margin.top, x2: 0, y2: margin.top + plotH,
+    stroke: "var(--ink-3)", "stroke-width": 1, opacity: 0.55
+  });
+  const crossDot = svgNode("circle", {
+    r: 4, fill: "var(--series-1)", stroke: "var(--surface)", "stroke-width": 2, opacity: 0
+  });
+  crossLine.style.opacity = "0";
+  hoverGroup.appendChild(crossLine);
+  hoverGroup.appendChild(crossDot);
+
+  const overlay = svgNode("rect", {
+    x: margin.left, y: margin.top, width: plotW, height: plotH, fill: "transparent",
+    style: "cursor: crosshair"
+  });
+  svg.appendChild(overlay);
+
+  const indexTimes = data.map((row) => dateToMs(row.date));
+  function nearestIndex(ms) {
+    let lo = 0;
+    let hi = indexTimes.length - 1;
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (indexTimes[mid] < ms) lo = mid + 1;
+      else hi = mid;
+    }
+    if (lo > 0 && Math.abs(indexTimes[lo - 1] - ms) < Math.abs(indexTimes[lo] - ms)) return lo - 1;
+    return lo;
+  }
+  function showHover(index, pointerEvent) {
+    const row = data[index];
+    if (!row) return;
+    marketHoverIndex = index;
+    const x = xFor(dateToMs(row.date));
+    const y = yFor(row.close);
+    crossLine.setAttribute("x1", x);
+    crossLine.setAttribute("x2", x);
+    crossLine.style.opacity = "0.55";
+    crossDot.setAttribute("cx", x);
+    crossDot.setAttribute("cy", y);
+    crossDot.style.opacity = "1";
+    const prev = index > 0 ? data[index - 1] : historyPreviousRow(row.date);
+    const change = prev ? row.close - prev.close : NaN;
+    const pct = prev && prev.close ? change / prev.close : NaN;
+    fillTooltip(dom.marketTooltip, `${row.date.slice(0, 4)}年${row.date.slice(5, 7)}月${row.date.slice(8, 10)}日`, priceFmt.format(row.close), [
+      ["日涨跌", isNumber(change) ? `${signedChangeText(change, 2)} / ${signedPctText(pct, 2)}` : "—"],
+      ["距区间高点", `${formatPct(row.close / Math.max(...data.map((d) => d.close)) - 1, 2)}`],
+      ["数据点", `${index + 1} / ${data.length}`]
+    ]);
+    const rect = svg.getBoundingClientRect();
+    const scaleX = rect.width / width;
+    const scaleY = rect.height / height;
+    const liveX = (pointerEvent ? pointerEvent.clientX - rect.left : x * scaleX);
+    const liveY = (pointerEvent ? pointerEvent.clientY - rect.top : y * scaleY);
+    placeTooltip(dom.marketTooltip, box, liveX / scaleX, liveY / scaleY, width, height);
+  }
+  function clearHover() {
+    marketHoverIndex = null;
+    crossLine.style.opacity = "0";
+    crossDot.style.opacity = "0";
+    dom.marketTooltip.hidden = true;
+  }
+  overlay.addEventListener("pointermove", (event) => {
+    const rect = svg.getBoundingClientRect();
+    const localX = (event.clientX - rect.left) * (width / rect.width);
+    if (localX < margin.left || localX > margin.left + plotW) { clearHover(); return; }
+    const ms = xMin + ((localX - margin.left) / plotW) * (xMax - xMin);
+    showHover(nearestIndex(ms), event);
+  });
+  overlay.addEventListener("pointerleave", clearHover);
+  svg.addEventListener("blur", clearHover);
+  svg.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End", "Escape"].includes(event.key)) return;
+    event.preventDefault();
+    if (event.key === "Escape") { clearHover(); return; }
+    let index = marketHoverIndex === null ? data.length - 1 : marketHoverIndex;
+    if (event.key === "ArrowLeft") index = Math.max(0, index - 1);
+    if (event.key === "ArrowRight") index = Math.min(data.length - 1, index + 1);
+    if (event.key === "Home") index = 0;
+    if (event.key === "End") index = data.length - 1;
+    showHover(index);
+  });
+  svg.addEventListener("focus", () => {
+    if (marketHoverIndex === null) showHover(data.length - 1);
+  });
+  dom.marketTooltip.hidden = true;
+  renderMarketMeta();
+}
+
+function historyPreviousRow(date) {
+  const history = state.market.history;
+  const index = history.findIndex((row) => row.date === date);
+  return index > 0 ? history[index - 1] : null;
+}
+
+/* --------------------------------------------------------------------------
+   Tables
+-------------------------------------------------------------------------- */
+function renderCMLTable() {
+  if (!dom.cmlTableBody || !analysis) return;
+  const a = analysis;
+  clearNode(dom.cmlTableBody);
+  const rows = [
+    ["无风险资产", "0.0%", formatPct(a.rf, 2), "0.00%"],
+    ["市场组合 M · 沪深300", "100.0%", formatPct(a.mu, 2), formatPct(a.vol, 2)],
+    ["推荐组合 P", formatPct(a.weight, 1), formatPct(a.expectedReturn, 2), formatPct(a.portfolioVol, 2)]
+  ];
+  rows.forEach((row, index) => {
+    const tr = document.createElement("tr");
+    row.forEach((value) => tr.appendChild(makeEl("td", index === 2 && value === row[0] ? "" : "", value)));
+    dom.cmlTableBody.appendChild(tr);
+  });
+}
+
+function aggregateMonthly(data) {
+  const months = new Map();
+  data.forEach((row) => {
+    const month = row.date.slice(0, 7);
+    months.set(month, row.close);
+  });
+  const list = Array.from(months.entries()).map(([month, close]) => ({ month, close }));
+  return list.reverse().map((row, index) => {
+    const prev = list[index + 1];
+    return { ...row, change: prev ? row.close / prev.close - 1 : null };
+  });
+}
+
+function renderMarketTable() {
+  if (!dom.marketTableBody) return;
+  const data = filteredMarketData();
+  clearNode(dom.marketTableBody);
+  aggregateMonthly(data).forEach((row) => {
+    const tr = document.createElement("tr");
+    tr.appendChild(makeEl("td", "", row.month));
+    tr.appendChild(makeEl("td", "", formatNum(row.close, 2)));
+    const change = isNumber(row.change) ? `${row.change >= 0 ? "▲ " : "▼ "}${signedPctText(row.change, 2)}` : "—";
+    const td = makeEl("td", row.change > 0 ? "is-up" : row.change < 0 ? "is-down" : "", change);
+    tr.appendChild(td);
+    dom.marketTableBody.appendChild(tr);
+  });
+}
+
+/* --------------------------------------------------------------------------
+   Aggregate render
+-------------------------------------------------------------------------- */
+function renderAll() {
+  analysis = computeAnalysis();
+  renderYieldPanel();
+  renderTopTiles(analysis);
+  renderInputs(analysis);
+  renderResults(analysis);
+  renderCMLChart();
+  renderMarketChart();
+  renderCMLTable();
+  renderMarketTable();
+  updateDataStatus();
+  if (!isNumber(state.lastAttemptAt) || state.lastAttemptAt === 0) {
+    setText(dom.lastRefresh, "最近同步：—");
+  }
+}
+function scheduleRenderAll() {
+  if (renderFrame) return;
+  renderFrame = window.requestAnimationFrame(() => {
+    renderFrame = 0;
+    renderAll();
+  });
+}
+
+/* --------------------------------------------------------------------------
+   Fetching live data
+-------------------------------------------------------------------------- */
+function fetchWithTimeout(url, timeout = 12000) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeout);
+  return fetch(url, { signal: controller.signal, cache: "no-store" })
+    .then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.json();
+    })
+    .finally(() => window.clearTimeout(timer));
+}
+
+let jsonpCounter = 0;
+function jsonpRequest(url, timeout = 12000) {
+  return new Promise((resolve, reject) => {
+    const callback = `__allocLineYield_${Date.now()}_${jsonpCounter += 1}`;
+    const script = document.createElement("script");
+    let settled = false;
+    const cleanup = () => {
+      window.clearTimeout(timer);
+      if (script.parentNode) script.parentNode.removeChild(script);
+      try { delete window[callback]; } catch (error) { window[callback] = undefined; }
+    };
+    const timer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error("JSONP timeout"));
+    }, timeout);
+    window[callback] = (payload) => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(payload);
+    };
+    script.onerror = () => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error("JSONP network error"));
+    };
+    script.async = true;
+    script.src = `${url}${url.includes("?") ? "&" : "?"}callback=${callback}`;
+    document.head.appendChild(script);
+  });
+}
+
+function mergeQuoteIntoHistory() {
+  const quote = state.market.quote;
+  const history = state.market.history;
+  if (!quote || !quote.date || !history.length) return;
+  const last = history[history.length - 1];
+  if (quote.date === last.date) {
+    last.close = quote.price;
+    if (isNumber(quote.high)) last.high = Math.max(last.high || quote.high, quote.high);
+    if (isNumber(quote.low)) last.low = Math.min(last.low || quote.low, quote.low);
+  } else if (quote.date > last.date) {
+    history.push({ date: quote.date, close: quote.price, open: quote.open, high: quote.high, low: quote.low });
+  }
+}
+
+function ensureQuoteFromHistory() {
+  const history = state.market.history;
+  if (history.length < 2) return;
+  const last = history[history.length - 1];
+  const prev = history[history.length - 2];
+  if (state.market.quoteLive || (state.market.quote && state.market.quote.date >= last.date)) return;
+  const change = last.close - prev.close;
+  state.market.quote = {
+    price: last.close,
+    prevClose: prev.close,
+    change,
+    pct: prev.close ? change / prev.close : 0,
+    open: last.open || last.close,
+    high: last.high || last.close,
+    low: last.low || last.close,
+    date: last.date,
+    time: "最新",
+    rawTime: ""
+  };
+}
+
+async function refreshMarketHistory() {
+  if (historyLoading) return false;
+  historyLoading = true;
+  const end = new Date();
+  const start = new Date(end);
+  start.setFullYear(end.getFullYear() - 8);
+  const ymd = (date) => `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
+  const param = `sh000300,day,${ymd(start)},${ymd(end)},2000,qfq`;
+  try {
+    const payload = await fetchWithTimeout(`https://web.ifzq.gtimg.cn/appstock/app/fqkline/get?param=${param}&_=${Date.now()}`, 15000);
+    const block = payload && payload.data && payload.data.sh000300;
+    const rawRows = block && (block.qfqday || block.day);
+    if (!Array.isArray(rawRows)) throw new Error("Kline response missing");
+    const parsed = rawRows.map((row) => ({
+      date: row[0],
+      open: Number(row[1]),
+      close: Number(row[2]),
+      high: Number(row[3]),
+      low: Number(row[4]),
+      volume: Number(row[5])
+    })).filter((row) => /^\d{4}-\d{2}-\d{2}$/.test(row.date) && row.close > 0);
+    if (parsed.length < 100) throw new Error("Kline data too short");
+    state.market.history = parsed;
+    state.market.liveHistory = true;
+    state.market.historyFetchedAt = Date.now();
+    ensureQuoteFromHistory();
+    mergeQuoteIntoHistory();
+    updateDataStatus();
+    scheduleRenderAll();
+    return true;
+  } catch (error) {
+    console.warn("沪深300历史行情获取失败，保留缓存数据。", error);
+    return false;
+  } finally {
+    historyLoading = false;
+  }
+}
+
+async function refreshQuote() {
+  if (quoteLoading) return false;
+  quoteLoading = true;
+  try {
+    const payload = await fetchWithTimeout(`https://web.ifzq.gtimg.cn/appstock/app/minute/query?code=sh000300&_=${Date.now()}`, 10000);
+    const block = payload && payload.data && payload.data.sh000300;
+    const qt = block && block.qt && block.qt.sh000300;
+    if (!Array.isArray(qt)) throw new Error("Quote response missing");
+    const price = Number(qt[3]);
+    const prevClose = Number(qt[4]);
+    if (!Number.isFinite(price) || price <= 0) throw new Error("Invalid quote price");
+    const rawTime = String(qt[30] || "");
+    const dateFromRaw = rawTime.length >= 8 ? `${rawTime.slice(0, 4)}-${rawTime.slice(4, 6)}-${rawTime.slice(6, 8)}` : "";
+    const date = dateFromRaw || (block.data && block.data.date ? `${block.data.date.slice(0, 4)}-${block.data.date.slice(4, 6)}-${block.data.date.slice(6, 8)}` : state.market.quote.date);
+    const time = rawTime.length >= 12 ? `${rawTime.slice(8, 10)}:${rawTime.slice(10, 12)}` : "最新";
+    const change = Number(qt[31]);
+    const pct = Number(qt[32]) / 100;
+    const next = {
+      price,
+      prevClose: Number.isFinite(prevClose) ? prevClose : state.market.quote.prevClose,
+      change: Number.isFinite(change) ? change : price - prevClose,
+      pct: Number.isFinite(pct) ? pct : (prevClose ? price / prevClose - 1 : 0),
+      open: Number(qt[5]),
+      high: Number(qt[33]),
+      low: Number(qt[34]),
+      date, time, rawTime
+    };
+    const previous = state.market.quote;
+    const unchanged = previous && previous.price === next.price && previous.rawTime === next.rawTime && state.market.quoteLive;
+    state.market.quote = next;
+    state.market.quoteLive = true;
+    state.market.quoteFetchedAt = Date.now();
+    state.lastAttemptAt = Date.now();
+    mergeQuoteIntoHistory();
+    updateDataStatus();
+    if (!unchanged) scheduleRenderAll();
+    else if (dom.lastRefresh) setText(dom.lastRefresh, `最近同步：${beijingTimestamp(new Date(), true)}（北京时间）`);
+    return true;
+  } catch (error) {
+    console.warn("沪深300实时行情获取失败，保留缓存数据。", error);
+    state.market.quoteLive = false;
+    state.lastAttemptAt = Date.now();
+    updateDataStatus();
+    return false;
+  } finally {
+    quoteLoading = false;
+  }
+}
+
+async function refreshYields() {
+  if (yieldsLoading) return false;
+  yieldsLoading = true;
+  const base = "https://datacenter-web.eastmoney.com/api/data/v1/get?reportName=RPTA_WEB_TREASURYYIELD&columns=ALL&pageNumber=1&pageSize=60&sortColumns=SOLAR_DATE&sortTypes=-1&source=WEB&client=WEB";
+  try {
+    const payload = await jsonpRequest(`${base}&_=${Date.now()}`, 12000);
+    const rows = payload && payload.result && payload.result.data;
+    if (!Array.isArray(rows) || !rows.length) throw new Error("Yield response missing");
+    const next = {};
+    let any = false;
+    TENOR_KEYS.forEach((key) => {
+      const field = TENORS[key].field;
+      const records = rows
+        .filter((row) => row[field] !== null && row[field] !== undefined && Number.isFinite(Number(row[field])))
+        .map((row) => ({ date: String(row.SOLAR_DATE).slice(0, 10), value: Number(row[field]) }))
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .slice(0, 60);
+      next[key] = records.length ? records : (state.yields.data[key] || []);
+      if (records.length) any = true;
+    });
+    if (!any) throw new Error("No yield values");
+    state.yields.data = next;
+    state.yields.live = true;
+    state.yields.fetchedAt = Date.now();
+    state.lastAttemptAt = Date.now();
+    updateDataStatus();
+    scheduleRenderAll();
+    return true;
+  } catch (error) {
+    console.warn("国债收益率获取失败，保留缓存数据。", error);
+    state.yields.live = false;
+    state.lastAttemptAt = Date.now();
+    updateDataStatus();
+    return false;
+  } finally {
+    yieldsLoading = false;
+  }
+}
+
+async function refreshAll(manual = false) {
+  if (state.refreshing) return;
+  state.refreshing = true;
+  state.lastAttemptAt = Date.now();
+  updateDataStatus();
+  const started = Date.now();
+  await Promise.allSettled([
+    refreshMarketHistory(),
+    refreshQuote(),
+    refreshYields()
+  ]);
+  if (manual) {
+    const elapsed = Date.now() - started;
+    if (elapsed < 520) await new Promise((resolve) => window.setTimeout(resolve, 520 - elapsed));
+  }
+  state.refreshing = false;
+  state.lastAttemptAt = Date.now();
+  updateDataStatus();
+  scheduleRenderAll();
+}
+
+/* --------------------------------------------------------------------------
+   Event wiring
+-------------------------------------------------------------------------- */
+function bindEvents() {
+  updateClock();
+  window.setInterval(updateClock, 1000);
+
+  dom.refreshBtn.addEventListener("click", () => refreshAll(true));
+
+  dom.targetRange.addEventListener("input", () => {
+    state.target = Number(dom.targetRange.value) / 100;
+    scheduleRenderAll();
+  });
+  dom.targetNumber.addEventListener("input", () => {
+    const value = Number(dom.targetNumber.value);
+    if (Number.isFinite(value) && value >= 0 && value <= 20) {
+      state.target = value / 100;
+      scheduleRenderAll();
+    }
+  });
+  dom.targetNumber.addEventListener("blur", () => {
+    const value = Number(dom.targetNumber.value);
+    state.target = clamp(Number.isFinite(value) ? value : state.target * 100, 0, 20) / 100;
+    scheduleRenderAll();
+  });
+
+  dom.riskRange.addEventListener("input", () => {
+    state.riskScore = clamp(Number(dom.riskRange.value), 1, 10);
+    scheduleRenderAll();
+  });
+
+  dom.capitalInput.addEventListener("input", () => {
+    const value = Number(dom.capitalInput.value);
+    if (Number.isFinite(value) && value > 0) {
+      state.capital = value * 10000;
+      scheduleRenderAll();
+    }
+  });
+  dom.capitalInput.addEventListener("blur", () => {
+    const value = Number(dom.capitalInput.value);
+    const safe = clamp(Number.isFinite(value) && value > 0 ? value : 100, 1, 100000);
+    state.capital = safe * 10000;
+    dom.capitalInput.value = String(safe);
+    scheduleRenderAll();
+  });
+  dom.quickButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      state.capital = Number(button.dataset.capital) * 10000;
+      scheduleRenderAll();
+    });
+  });
+
+  dom.tenorButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      state.tenor = button.dataset.tenor;
+      scheduleRenderAll();
+    });
+  });
+
+  dom.periodButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      state.period = button.dataset.period;
+      dom.periodButtons.forEach((item) => item.setAttribute("aria-pressed", String(item === button)));
+      renderMarketChart();
+      renderMarketTable();
+      renderMarketMeta();
+    });
+  });
+
+  dom.windowSelect.addEventListener("change", () => {
+    state.windowKey = dom.windowSelect.value;
+    state.autoMu = true;
+    state.autoVol = true;
+    state.muOverride = null;
+    state.volOverride = null;
+    scheduleRenderAll();
+  });
+  dom.dividendInput.addEventListener("change", () => {
+    const value = Number(dom.dividendInput.value);
+    if (Number.isFinite(value) && value >= 0 && value <= 10) {
+      state.dividend = value / 100;
+      if (state.autoMu) state.muOverride = null;
+    }
+    scheduleRenderAll();
+  });
+  dom.muInput.addEventListener("input", () => {
+    const value = Number(dom.muInput.value);
+    if (Number.isFinite(value) && value >= -5 && value <= 30) {
+      state.autoMu = false;
+      state.muOverride = value / 100;
+      scheduleRenderAll();
+    }
+  });
+  dom.muInput.addEventListener("blur", () => {
+    const value = Number(dom.muInput.value);
+    if (Number.isFinite(value) && value >= -5 && value <= 30) {
+      state.autoMu = false;
+      state.muOverride = value / 100;
+    } else {
+      state.autoMu = true;
+      state.muOverride = null;
+    }
+    scheduleRenderAll();
+  });
+  dom.volInput.addEventListener("input", () => {
+    const value = Number(dom.volInput.value);
+    if (Number.isFinite(value) && value >= 1 && value <= 100) {
+      state.autoVol = false;
+      state.volOverride = value / 100;
+      scheduleRenderAll();
+    }
+  });
+  dom.volInput.addEventListener("blur", () => {
+    const value = Number(dom.volInput.value);
+    if (Number.isFinite(value) && value >= 1 && value <= 100) {
+      state.autoVol = false;
+      state.volOverride = value / 100;
+    } else {
+      state.autoVol = true;
+      state.volOverride = null;
+    }
+    scheduleRenderAll();
+  });
+  dom.resetAssumptions.addEventListener("click", () => {
+    state.autoMu = true;
+    state.autoVol = true;
+    state.muOverride = null;
+    state.volOverride = null;
+    scheduleRenderAll();
+  });
+
+  dom.calcBtn.addEventListener("click", () => {
+    scheduleRenderAll();
+    dom.resultPanel.classList.add("flash");
+    window.setTimeout(() => dom.resultPanel.classList.remove("flash"), 700);
+    if (window.innerWidth <= 960) {
+      dom.resultPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+
+  dom.cmlTableBtn.addEventListener("click", () => {
+    const expanded = dom.cmlTableBtn.getAttribute("aria-expanded") === "true";
+    dom.cmlTableBtn.setAttribute("aria-expanded", String(!expanded));
+    dom.cmlTableWrap.hidden = expanded;
+    if (!expanded) renderCMLTable();
+  });
+  dom.marketTableBtn.addEventListener("click", () => {
+    const expanded = dom.marketTableBtn.getAttribute("aria-expanded") === "true";
+    dom.marketTableBtn.setAttribute("aria-expanded", String(!expanded));
+    dom.marketTableWrap.hidden = expanded;
+    if (!expanded) renderMarketTable();
+  });
+
+  window.addEventListener("resize", debounce(() => {
+    if (!analysis) return;
+    drawSparkline(dom.rfSpark, (state.yields.data[state.tenor] || []).slice(0, 30).reverse().map((row) => row.value), {
+      color: "var(--series-2)",
+      label: `近30期中国${TENORS[state.tenor].label}国债收益率走势`
+    });
+    renderCMLChart();
+    renderMarketChart();
+  }, 150));
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) return;
+    if (Date.now() - state.market.quoteFetchedAt > 60000) refreshQuote();
+    if (Date.now() - state.yields.fetchedAt > 300000) refreshYields();
+  });
+
+  window.setInterval(() => {
+    if (!document.hidden) refreshQuote();
+  }, 30000);
+  window.setInterval(() => {
+    if (!document.hidden) refreshYields();
+  }, 300000);
+  window.setInterval(() => {
+    if (!document.hidden) refreshMarketHistory();
+  }, 900000);
+
+  // Make all range keyboard interactions visible.
+  [dom.targetRange, dom.riskRange].forEach((input) => {
+    input.addEventListener("keydown", () => window.requestAnimationFrame(() => {
+      if (analysis) renderInputs(analysis);
+    }));
+  });
+}
+
+
+/* --------------------------------------------------------------------------
+   Init
+-------------------------------------------------------------------------- */
+function init() {
+  cacheDom();
+  readFallbackData();
+  dom.riskTicks.innerHTML = "";
+  for (let i = 0; i < 10; i += 1) {
+    const tick = document.createElement("span");
+    tick.className = "risk-tick";
+    dom.riskTicks.appendChild(tick);
+  }
+  bindEvents();
+  renderAll();
+  // Mark initial fallback as cached until the first network response arrives.
+  updateDataStatus();
+  refreshAll(false);
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", init, { once: true });
+} else {
+  init();
+}
+})();
+
+</script>
+</body>
+</html>
